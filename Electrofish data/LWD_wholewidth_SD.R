@@ -14,7 +14,8 @@ library(lattice)
 
 # Defining variables type: -----------------------------------------------------
 
-# convert to categorical variables:
+# convert to categorical variables:my$DateYYYYMMDD<-as.factor(my$DateYYYYMMDD)
+
 my$Catchment_number<-as.factor(my$Catchment_number)
 my$Whole_width_fished<-as.factor(my$Whole_width_fished)
 my$DateYYYYMMDD<-as.factor(my$DateYYYYMMDD)
