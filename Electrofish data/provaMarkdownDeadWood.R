@@ -4,7 +4,7 @@ library(rmarkdown)
 
 
 rm(list=ls())
-setwd("C:/Users/sedi0002/Google Drive/Dod ved/Electrofish data")
+setwd("C:/Users/serena/Google Drive/Dod ved/Electrofish data")
 my<-read.table("LWD_wholewidth_SD3.txt",header=T)
 
 
