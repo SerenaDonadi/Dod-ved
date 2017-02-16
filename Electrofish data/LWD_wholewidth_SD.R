@@ -89,8 +89,8 @@ AV<-aggregate(cbind(my$Altitude,my$ddlat,my$ddlong,my$LWD,my$exaktarea,my$Wetted
                     ,my$SUB1,my$Site_habitat_index,my$Velocity,my$Slope_percent,my$Distance_to_sea,my$Month,my$Julian_date
                     ,my$Abbor,my$BEcrOTOT,my$Elrit,my$GEdda,my$HarrTOT,my$Lake,my$LaxFIXTO,my$LaxOrtot,my$LaxTOT,my$Eel,my$MOrt,my$OringTOT
                     ,my$RegnbTOT,my$ROdinTOT,my$Cottus_spp,my$Lampetra,my$Sticklebacks,my$VIX,my$VIX_klass,my$Number_of_fish_species
-                    ),list(my$River_name,my$Year,my$Catchment_number),mean)
-names(AV)<-c("River_name", "Year", "Catchment_number",
+                    ),list(my$River_name,my$Catchment_number,my$Yearmy$Year,),mean)
+names(AV)<-c("River_name", "Catchment_number","Year", 
              "Altitude","Lat","Long","LWD","exaktarea","Wetted_width","Site_length","Site_area",
              "Maxdepth","Av_depth","Water_temperature","Average_air_temperature","SUB1","Site_habitat_index",
              "Velocity","Slope_percent","Distance_to_sea","Month","Julian_date","Abbor","BEcrOTOT","Elrit","GEdda",
@@ -250,7 +250,7 @@ anova(M0,M1) # M1 wins
 #which I model the temporal  correlation come from the same spot, i.e. they can differ in year and river but not 
 # other spatial variables. E.g.:
 
-# temo corr:
+# temp corr:
 M0<-lme(OringTOT~LWD,random=~1|River_name/Catchment_number, data=AV)
 M1<-lme(OringTOT~LWD,random=~1|River_name/Catchment_number, corCompSymm(form=~Year), data=AV)
 M2<-lme(OringTOT~LWD,random=~1|River_name/Catchment_number, corAR1(form=~Year), data=AV)
@@ -264,6 +264,7 @@ M2<-lme(OringTOT~LWD,random=~1|River_name/Catchment_number, corAR1(form=~Year), 
 M5<-gls(OringTOT~LWD, corAR1(form=~Year|River_name/Catchment_number), data=AV)
 anova(M2,M5) #M2 wins
 
+# for öring binary:
 # temp corr:
 M0<-lme(OringTOT_KLASS~LWD,random=~1|River_name/Catchment_number, data=AV)
 M1<-lme(OringTOT_KLASS~LWD,random=~1|River_name/Catchment_number, corCompSymm(form=~Year), data=AV)
@@ -289,7 +290,7 @@ anova(M2,M5) #M2 wins
 # explore collinearity of predictors ------------------------------------
 
 #take dataframe with only environmental data and calculate model:
-pgd<-AV[,4:22]
+pgd<-AV[,4:22] # or pgd<-AV[,3:22] to include year but it does not explain much (actually tot explained variation declines)
 # maybe need to convert categorical variables into dummy variables.  But are there any?
 # No, the problem is caused by NAs: 
 summary(pgd)
@@ -330,9 +331,6 @@ plot(d$scores_x,d$Wetted_width)
 plot(d$scores_y,d$LWD)
 plot(d$scores_y,d$Average_air_temperature)
 plot(d$scores_y,d$Wetted_width)
-
-################################# still to do:
-
 
 # check with DCA:
 # rule of thumb: if the lengths of DCA axes 1 and 2 are both lower than 3, we can use PCA,
