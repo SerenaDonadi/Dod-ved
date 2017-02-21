@@ -13,6 +13,7 @@ library(ggplot2)
 library(lattice)
 library(nlme)
 library(MASS)
+library(piecewiseSEM)
 
 # Defining variables type: -----------------------------------------------------
 
@@ -89,7 +90,7 @@ AV<-aggregate(cbind(my$Altitude,my$ddlat,my$ddlong,my$LWD,my$exaktarea,my$Wetted
                     ,my$SUB1,my$Site_habitat_index,my$Velocity,my$Slope_percent,my$Distance_to_sea,my$Month,my$Julian_date
                     ,my$Abbor,my$BEcrOTOT,my$Elrit,my$GEdda,my$HarrTOT,my$Lake,my$LaxFIXTO,my$LaxOrtot,my$LaxTOT,my$Eel,my$MOrt,my$OringTOT
                     ,my$RegnbTOT,my$ROdinTOT,my$Cottus_spp,my$Lampetra,my$Sticklebacks,my$VIX,my$VIX_klass,my$Number_of_fish_species
-                    ),list(my$River_name,my$Catchment_number,my$Yearmy$Year,),mean)
+                    ),list(my$River_name,my$Catchment_number,my$Year),mean)
 names(AV)<-c("River_name", "Catchment_number","Year", 
              "Altitude","Lat","Long","LWD","exaktarea","Wetted_width","Site_length","Site_area",
              "Maxdepth","Av_depth","Water_temperature","Average_air_temperature","SUB1","Site_habitat_index",
@@ -120,24 +121,6 @@ head(AV)
 str(AV)
 AV$OringTOT_KLASS <- ifelse(AV$OringTOT > 0, c(1), c(0)) 
 AV$LaxTOT_KLASS <- ifelse(AV$LaxTOT > 0, c(1), c(0)) 
-
-# Exploring and plotting ---------------------------------------------------------------
-##### The fun starts now:
-
-###wild exploration:
-dotchart(AV$OringTOT)
-dotchart(AV$BEcrOTOT)
-dotchart(AV$Abbor)
-dotchart(AV$Eel)
-dotchart(AV$LaxTOT )
-dotchart(AV$Sticklebacks)
-
-plot(AV$OringTOT~AV$LWD)
-plot(AV$OringTOT_KLASS~AV$LWD)# more promising with binarian varirables indeed...
-plot(AV$LaxTOT~AV$LWD)
-plot(AV$LaxTOT_KLASS~AV$LWD)
-
-plot(AV$OringTOT~AV$Catchment_number)
 
 # SPATIAL AUTOCORRELATION -------------------------------------------------
 # One catchment contain several rivers. But also, sometimes, one same (long!) river belong to 
@@ -250,6 +233,7 @@ anova(M0,M1) # M1 wins
 #which I model the temporal  correlation come from the same spot, i.e. they can differ in year and river but not 
 # other spatial variables. E.g.:
 
+# for öring continuous
 # temp corr:
 M0<-lme(OringTOT~LWD,random=~1|River_name/Catchment_number, data=AV)
 M1<-lme(OringTOT~LWD,random=~1|River_name/Catchment_number, corCompSymm(form=~Year), data=AV)
@@ -281,11 +265,6 @@ anova(M2,M5) #M2 wins
 
 # !!! remember to check the assumption that the time series are not correlated,
 # by looking at correlation between residuals of the model coming from each time serie
-
-
-# next step is to consider binary vs not binary variables and start serious modeling
-# also, need to check collinearity of explanatory factors, maybe use a PCA or matrix (found online)
-
 
 # explore collinearity of predictors ------------------------------------
 
@@ -345,4 +324,105 @@ d2<-d1[!d1$Average_air_temperature<0,]
 summary(d2)
 ord <- decorana(d2)
 ord
+
+
+
+
+# öring -----------------------------------------------------
+dotchart(AV$OringTOT)
+
+# explore sampling artefacts:
+plot(AV$OringTOT~AV$Site_length) 
+plot(AV$OringTOT~AV$Site_area) # ok, no sign of incxreased abundances for higher values of legnths or area
+plot(AV$OringTOT~AV$Water_temperature) # hump shape
+
+# explore relationships with potential explanatory factors:
+# LWD
+plot(AV$OringTOT~AV$LWD)
+plot(AV$OringTOT_KLASS~AV$LWD)# more promising with binarian varirables indeed...
+plot(AV$OringTOT~AV$LWD, cex=AV$GEdda/5)
+plot(AV$OringTOT~AV$LWD, cex=AV$GEdda/4, xlim=c(0,150), ylim=c(0,350))
+plot(AV$OringTOT_KLASS~AV$LWD,cex=AV$GEdda/4,xlim=c(0,50),)# more promising with binarian varirables indeed...
+
+# seasonality and year-to-year variation
+plot(AV$OringTOT~AV$Julian_date)
+plot(AV$OringTOT_KLASS~AV$Julian_date)
+plot(AV$OringTOT~AV$Month)
+plot(AV$OringTOT_KLASS~AV$Month)
+plot(AV$OringTOT~AV$Year)
+plot(AV$OringTOT_KLASS~AV$Year)
+
+# climate and geography
+plot(AV$OringTOT~AV$Lat)
+plot(AV$OringTOT_KLASS~AV$Lat)
+plot(AV$OringTOT~AV$Altitude)
+plot(AV$OringTOT_KLASS~AV$Altitude)
+plot(AV$OringTOT~AV$Average_air_temperature)
+plot(AV$OringTOT_KLASS~AV$Average_air_temperature)
+plot(AV$OringTOT~AV$Distance_to_sea)
+plot(AV$OringTOT_KLASS~AV$Distance_to_sea)
+
+# stream size
+plot(AV$OringTOT~AV$Wetted_width)
+plot(AV$OringTOT_KLASS~AV$Wetted_width)
+plot(AV$OringTOT~AV$exaktarea)
+plot(AV$OringTOT_KLASS~AV$exaktarea)
+plot(AV$OringTOT~AV$Av_depth)
+plot(AV$OringTOT_KLASS~AV$Av_depth)
+plot(AV$OringTOT~AV$Maxdepth)
+plot(AV$OringTOT_KLASS~AV$Maxdepth)
+
+# stream local features
+plot(AV$OringTOT~AV$Slope_percent)
+plot(AV$OringTOT_KLASS~AV$Slope_percent)
+plot(AV$OringTOT~AV$Velocity)
+plot(AV$OringTOT_KLASS~AV$Velocity)
+# substrate
+plot(AV$OringTOT~AV$SUB1)
+plot(AV$OringTOT_KLASS~AV$SUB1)
+
+# predators and competitors:
+plot(AV$OringTOT~AV$GEdda)
+plot(AV$OringTOT_KLASS~AV$GEdda)
+plot(AV$OringTOT~AV$Lampetra)
+plot(AV$OringTOT_KLASS~AV$Lampetra)
+plot(AV$OringTOT~AV$BEcrOTOT)
+plot(AV$OringTOT_KLASS~AV$BEcrOTOT)
+
+# VIX:
+plot(AV$OringTOT~AV$VIX)
+
+# LWD ---------------------------------------------------------------------
+dotchart(AV$LWD)
+
+# explore sampling artefacts:
+plot(AV$LWD~AV$Site_length) 
+plot(AV$LWD~AV$Site_area) # ok, no sign of incxreased abundances for higher values of legnths or area
+plot(AV$LWD~AV$Water_temperature) # hump shape
+
+# seasonality and year-to-year variation
+plot(AV$LWD~AV$Julian_date)
+plot(AV$LWD~AV$Month)
+plot(AV$LWD~AV$Year)
+
+# climate and geography
+plot(AV$LWD~AV$Lat)
+plot(AV$LWD~AV$Altitude)
+plot(AV$LWD~AV$Average_air_temperature)
+plot(AV$LWD~AV$Distance_to_sea)
+
+# stream size
+plot(AV$LWD~AV$Wetted_width)
+plot(AV$LWD~AV$exaktarea)
+plot(AV$LWD~AV$Av_depth)
+plot(AV$LWD~AV$Maxdepth)
+
+# stream local features
+plot(AV$LWD~AV$Slope_percent)
+plot(AV$LWD~AV$Velocity)
+
+
+
+
+
 
