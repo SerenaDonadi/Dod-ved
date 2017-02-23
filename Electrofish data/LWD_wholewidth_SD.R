@@ -128,6 +128,40 @@ AV$LaxTOT_KLASS <- ifelse(AV$LaxTOT > 0, c(1), c(0))
 DeerEcervi$Ecervi.01 <- DeerEcervi$Ecervi
 DeerEcervi$Ecervi.01[DeerEcervi$Ecervi >0 ] <- 1
 
+
+# subsets of data ---------------------------------------------------------
+
+#choose a specific year. 2009 is that with more observation:
+AV2009<-AV[AV$Year=="2009",]
+
+#take the average of years:
+AVyear<-aggregate(cbind(AV$Altitude,AV$Lat,AV$Long,AV$LWD,AV$exaktarea,AV$Wetted_width,AV$Site_length
+                        ,AV$Site_area,AV$Maxdepth,AV$Av_depth,AV$Water_temperature,AV$Average_air_temperature
+                        ,AV$SUB1,AV$Site_habitat_index,AV$Velocity,AV$Slope_percent,AV$Distance_to_sea,AV$Month,AV$Julian_date
+                        ,AV$Abbor,AV$BEcrOTOT,AV$Elrit,AV$GEdda,AV$HarrTOT,AV$Lake,AV$LaxFIXTO,AV$LaxOrtot,AV$LaxTOT,AV$Eel,AV$MOrt,AV$OringTOT
+                        ,AV$RegnbTOT,AV$ROdinTOT,AV$Cottus_spp,AV$Lampetra,AV$Sticklebacks,AV$VIX,AV$VIX_klass,AV$Number_of_fish_species
+),list(AV$River_name,AV$Catchment_number),mean)
+names(AVyear)<-c("River_name", "Catchment_number", 
+                 "Altitude","Lat","Long","LWD","exaktarea","Wetted_width","Site_length","Site_area",
+                 "Maxdepth","Av_depth","Water_temperature","Average_air_temperature","SUB1","Site_habitat_index",
+                 "Velocity","Slope_percent","Distance_to_sea","Month","Julian_date","Abbor","BEcrOTOT","Elrit","GEdda",
+                 "HarrTOT","Lake","LaxFIXTO","LaxOrtot","LaxTOT","Eel","MOrt","OringTOT","RegnbTOT","ROdinTOT","Cottus_spp",
+                 "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species")
+head(AVyear) # add binary variables:
+AVyear$OringTOT_KLASS <- AVyear$OringTOT
+AVyear$OringTOT_KLASS[AVyear$OringTOT >0 ] <- 1
+AVyear$GEdda_KLASS <- ifelse(AVyear$GEdda > 0, c(1), c(0)) 
+# and remove NAs:
+AVyear2<-na.omit(AVyear)
+
+
+
+#tutti i fiumi il cui nome ricorre piu'  di una volta
+AVOC<-AV[AV$River_name %in% n_occur$Var1[n_occur$Freq > 1],]
+
+
+
+
 # SPATIAL AUTOCORRELATION -------------------------------------------------
 # One catchment contain several rivers. But also, sometimes, one same (long!) river belong to 
 # more catchments, which is not a problem for visual exploration (averages were calculated separetely
@@ -337,9 +371,43 @@ ord <- decorana(d2)
 ord
 
 
+# PCA with fish data ------------------------------------------------------
+
+pgd<-AV[,23:39]
+summary(pgd)
+d<-na.omit(pgd)
+model.pca<-prcomp(d,scale=T)
+summary(model.pca)
+plot(model.pca,xlab="ordination axis")
+print(model.pca)               #     give environment scores
+predict(model.pca)[,1]         #     give samples scores! axis 1
+predict(model.pca)[,2]         #     give samples scores! axis 2
+biplot(model.pca)
+
+# DCA:
+library(vegan)
+ord <- decorana(d) # I should get community weighted values, now there are too many zeros
+
+# correlation matrix:
+scatterplot.matrix(~Abbor+BEcrOTOT+Elrit+GEdda+HarrTOT
+                   +Lake+OringTOT,data=d)
+
+pairs(d,panel=panel.smooth)
+
+panel.cor <- function(x, y, digits=2, prefix="", cex.cor, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- abs(cor(x, y))                                    # these are person correlation. or : r <- cor(x, y, method="spearman")
+  txt <- format(c(r, 0.123456789), digits=digits)[1]
+  txt <- paste(prefix, txt, sep="")
+  if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+pairs(d, lower.panel=panel.smooth, upper.panel=panel.cor)
 
 
-# öring -----------------------------------------------------
+# graphs öring -----------------------------------------------------
 dotchart(AV$OringTOT)
 
 # explore sampling artefacts:
@@ -403,7 +471,7 @@ plot(AV$OringTOT_KLASS~AV$BEcrOTOT)
 # VIX:
 plot(AV$OringTOT~AV$VIX)
 
-# LWD ---------------------------------------------------------------------
+# graphs LWD ---------------------------------------------------------------------
 dotchart(AV$LWD)
 
 # explore sampling artefacts:
@@ -433,11 +501,25 @@ plot(AV$LWD~AV$Slope_percent)
 plot(AV$LWD~AV$Velocity)
 
 
-# SEM ---------------------------------------------------------------------
+# predictors to transform? ------------------------------------------------
+###########predictors to transform?
+hist(AV$LWD)
+hist(AV$Altitude)
+hist(AV$Wetted_width)
+hist(AV$Av_depth)
+hist(AV$Average_air_temperature)
+hist(AV$Slope_percent)
+hist(AV$Distance_to_sea)
+hist(AV$Velocity)
+
+
+
+# explore single models for Öring binary ---------------------------------------------------------------------
 
 # single models, check convergence, random part, interactions and collinearity among predictors:
 # maybe center predictors so that intercept represent avg values rather than 0s
 
+############### Öring binary: exploratory
 # random part
 # what to use: glmer, glmmPQL,glmmML. Which one can incorporate my complex spatial-temporal correlation?
 #random=~1|River_name/Catchment_number, corAR1(form=~Year)
@@ -445,7 +527,7 @@ M1<-glmer(OringTOT_KLASS~LWD+(1|River_name),family=binomial,data=AV) #ok
 M1<-glmer(OringTOT_KLASS~LWD+(1|Catchment_number),family=binomial,data=AV)#ok
 M1<-glmer(OringTOT_KLASS~LWD+(1|River_name/Catchment_number),family=binomial,data=AV)#no. 
 ## maybe  bc we some rivers belong to more than 1 catchment? or maybe is the wrong order in random?
-M1<-glmer(OringTOT_KLASS~LWD+(1|Catchment_number/River_name),family=binomial,data=AV)# yes!
+M1<-glmer(OringTOT_KLASS~LWD+(1|Catchment_number/River_name),family=binomial,data=AV)# yes! Checked, order is now correct
 summary(M1)
 M1<-glmer(OringTOT_KLASS~LWD+(Year|Catchment_number/River_name),family=binomial,data=AV)# no
 # with a different script:
@@ -463,9 +545,35 @@ M1<-glmer(OringTOT_KLASS~LWD+(1|Catchment_number/River_name)+corAR1(form=~Year),
 #3)I try Bayesian
 #4) I use continuous instead of binarian
 
-# go for 1 now, beyond optimal model:
+### more effort to model temporal correlation in glmer:
+# remove rivers that have been sampled only once and try to model temporal correlation:
+AVdup<-AV[duplicated(AV$River_name), ]
+AV[1:20,1:3]
+AVdup[1:8,1:3] # estraggo tutti i river ripetuti, but 1) perdo il primo della serie temporale per ogni fiume, e 2) per
+# quei fiumi per cui ho solo 2 date, mi ritrovo con una sola
+n_occur <- data.frame(table(AV$River_name))
+n_occur[n_occur$Freq > 1,]
+n_occur[n_occur$Freq == 1,]
+AVOC<-AV[AV$River_name %in% n_occur$Var1[n_occur$Freq > 1],] #Ok! ottoengo tutti i fiumi il cui nome ricorre piu'  di una volta,
+# e poiche'  ho clacolato le medie per anno, ottengo tutti i fiumi sampled in more than one year
+# check:
+head(AVOC)
+AV[AV$River_name=="Vettasjoki",]
+AVOC[AVOC$River_name=="Vettasjoki",]
+
+M1<-glmer(OringTOT_KLASS~LWD+(1|Catchment_number/River_name)+corAR1(form=~Year),family=binomial,data=AVOC) #still nope
+# is than bc of NAs? No
+M1<-glmer(OringTOT_KLASS~LWD+(1|Catchment_number/River_name)+corAR1(form=~Year),family=binomial,data=AV2)
+# is it because of the specific correlation strc (which is exponential?) nope
+M1<-glmer(OringTOT_KLASS~LWD+(1|Catchment_number/River_name)+corCompSymm(form=~Year),family=binomial,data=AV2)
+# the correlation worked with lme so my guess is that it doesn't cope well with glmer (or lmer)
+M2<-lme(OringTOT_KLASS~LWD,random=~1|River_name/Catchment_number, corAR1(form=~Year), data=AV)
+summary(M2)
+M1<-lmer(OringTOT_KLASS~LWD+(1|Catchment_number/River_name)+corAR1(form=~Year),family=binomial,data=AV2)
+
+### if I skip temporal correlation: beyond optimal model:
 M1<-glm(OringTOT_KLASS~Wetted_width+LWD+Julian_date+Year+Average_air_temperature+Distance_to_sea
-          +SUB1+GEdda,family=binomial,data=AV)
+        +SUB1+GEdda,family=binomial,data=AV)
 summary(M1)
 vif(M1)
 # add random:
@@ -485,8 +593,39 @@ M1<-glm(OringTOT_KLASS~LWD+Distance_to_sea+Average_air_temperature+Av_depth,fami
 M2<-glmer(OringTOT_KLASS~LWD+Distance_to_sea+Average_air_temperature+Av_depth
           +(1|Catchment_number/River_name),family=binomial,data=AV)
 
+### skip temporal correlation but choose a specific year:
+n_occur <- data.frame(table(AV$Year))
+n_occur[n_occur$Freq > 1,]
+# 2009 is that with more observation:
+AV2009<-AV[AV$Year=="2009",]
+M1<-glmer(OringTOT_KLASS~LWD+(1|Catchment_number/River_name),family=binomial,data=AV2009)
 
-# or try 4:
+### or take the average of years:
+AVyear<-aggregate(cbind(AV$Altitude,AV$Lat,AV$Long,AV$LWD,AV$exaktarea,AV$Wetted_width,AV$Site_length
+                        ,AV$Site_area,AV$Maxdepth,AV$Av_depth,AV$Water_temperature,AV$Average_air_temperature
+                        ,AV$SUB1,AV$Site_habitat_index,AV$Velocity,AV$Slope_percent,AV$Distance_to_sea,AV$Month,AV$Julian_date
+                        ,AV$Abbor,AV$BEcrOTOT,AV$Elrit,AV$GEdda,AV$HarrTOT,AV$Lake,AV$LaxFIXTO,AV$LaxOrtot,AV$LaxTOT,AV$Eel,AV$MOrt,AV$OringTOT
+                        ,AV$RegnbTOT,AV$ROdinTOT,AV$Cottus_spp,AV$Lampetra,AV$Sticklebacks,AV$VIX,AV$VIX_klass,AV$Number_of_fish_species
+),list(AV$River_name,AV$Catchment_number),mean)
+names(AVyear)<-c("River_name", "Catchment_number", 
+                 "Altitude","Lat","Long","LWD","exaktarea","Wetted_width","Site_length","Site_area",
+                 "Maxdepth","Av_depth","Water_temperature","Average_air_temperature","SUB1","Site_habitat_index",
+                 "Velocity","Slope_percent","Distance_to_sea","Month","Julian_date","Abbor","BEcrOTOT","Elrit","GEdda",
+                 "HarrTOT","Lake","LaxFIXTO","LaxOrtot","LaxTOT","Eel","MOrt","OringTOT","RegnbTOT","ROdinTOT","Cottus_spp",
+                 "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species")
+head(AVyear)
+AVyear$OringTOT_KLASS <- AVyear$OringTOT
+AVyear$OringTOT_KLASS[AVyear$OringTOT >0 ] <- 1
+
+M1<-glmer(OringTOT_KLASS~LWD+(1|Catchment_number/River_name),family=binomial,data=AVyear)
+summary(M1)
+
+
+
+
+# # explore single models for Öring continuous ----------------------------
+
+###############  Öring continuous: exploratory
 M2<-lme(OringTOT~LWD+Average_air_temperature,random=~1|River_name/Catchment_number, 
         corAR1(form=~Year), data=AV)
 #NAs give problems:
@@ -506,6 +645,9 @@ M3<-lme(sqrt(OringTOT+1)~LWD+Distance_to_sea+Average_air_temperature+Av_depth+We
         random=~1|River_name/Catchment_number, corAR1(form=~Year), method="ML",data=AV2)
 AIC(M1,M2,M3) #log is way better
 
+
+
+# explore single model for LWD --------------------------------------------
 # LWD:
 # trasnform?
 hist(AV$LWD) #trasform seems better
@@ -522,17 +664,75 @@ AIC(M1,M2,M3) #meglio log
 summary(M2)
 
 
-# SEM: on AV2 and binary:
+# piecewise SEM  ----------------------------------------------------------
+
+#BINARY
+# the best so far is:
+### SEM: on AV2 (no NAs) and binary:
 M2 = list(
   glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+Wetted_width+Year
-            +(1|Catchment_number/River_name),family=binomial,data=AV2),
+        +(1|Catchment_number/River_name),family=binomial,data=AV2),
   lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width+Year,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
 sem.fit(M2,AV2)
 sem.coefs(M2,AV2)
 sem.model.fits(M2)
 sem.plot(M2, AV)
+# if I trasnform some predictors? boh..
+M2 = list(
+  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+log(Wetted_width)+log(Distance_to_sea)
+        +(1|Catchment_number/River_name),family=binomial,data=AV2),
+  lme(log(LWD+1)~Average_air_temperature+Av_depth+log(Wetted_width)+Year,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV)
 
+# other attempts, less succeful:
+# SEM: on AV and binary:(BUT no temp correlation for öring): run again
+M2 = list(
+  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+Wetted_width+Average_air_temperature+SUB1
+        +(1|Catchment_number/River_name),family=binomial,data=AV),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width+Year,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV))
+sem.fit(M2,AV)
+sem.coefs(M2,AV)
+sem.model.fits(M2)
+sem.plot(M2, AV)
+
+# SEM: on AVyear (averages of years) and binary:
+M2 = list(
+  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+Wetted_width+Average_air_temperature+SUB1
+        +(1|Catchment_number/River_name),family=binomial,data=AVyear),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width,
+      random=~1|River_name/Catchment_number, data=AVyear))
+sem.fit(M2,AVyear)
+#  remove NAs:
+AVyear2<-na.omit(AVyear)
+M2 = list(
+  glmer(OringTOT_KLASS~Av_depth+SUB1
+        +(1|Catchment_number/River_name),family=binomial,data=AVyear2),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width,
+      random=~1|River_name/Catchment_number, data=AVyear2))
+sem.fit(M2,AVyear2)
+sem.coefs(M2,AVyear2)
+sem.model.fits(AVyear2)
+sem.plot(M2, AVyear2)
+
+# only with 2009 values:
+M2 = list(
+  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+SUB1+ GEdda_KLASS
+        +(1|Catchment_number/River_name),family=binomial,data=AV2009),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width,
+      random=~1|River_name/Catchment_number, data=AV2009))
+sem.fit(M2,AVyear)
+# remove NAs
+AV2009_2<-na.omit(AV2009)
+#  does not converge
+
+
+################## CONTINUOUS
 # SEM: on AV2 and continuous:
 M2 = list(
   lme(log(OringTOT+1)~log(LWD+1)+Av_depth+Wetted_width+Distance_to_sea+Average_air_temperature+SUB1+GEdda,
@@ -544,22 +744,7 @@ sem.coefs(M2,AV2)
 sem.model.fits(M2)
 sem.plot(M2, AV)
 
-# SEM: on larger AV and continuous:
-M2 = list(
-  lme(log(OringTOT+1)~log(LWD+1)+Av_depth+Wetted_width+Distance_to_sea+Average_air_temperature+SUB1+GEdda,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),na.action = na.omit,data=AV),
-  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width+Year,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),na.action = na.omit,data=AV))
-sem.fit(M2,AV2)
-sem.coefs(M2,AV2)
-sem.model.fits(M2)
-sem.plot(M2, AV)
-# it's the same as with AV2. I think the problem is that many rivers have only been sampled once so the correlation
-# structure fails. I should fina a way to exclude only those:
-length(AV$River_name) # not able, try again/ask
-
 # continue with AV2 and continous: trying different predictors:
-
 ####### move this part where you ahve PCA
 # 1) CLIMATIC: lat, altitude, avg air temp
 M1<-lm(log(OringTOT+1)~Lat+Altitude+Average_air_temperature, data=AV2)
@@ -605,7 +790,7 @@ vif(M1)
 # 6) biotic interactions: +GEdda+Lampetra+Sticklebacks+LaxTOT+Abbor+Lake+Cottus_spp were signif, but overall fit not good
 # talk to Erik to know what makes sense. for now I keep only Gedda
 
-# Final for now..:
+### Final for AV2 for now..:
 M2 = list(
   lme(log(OringTOT+1)~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log(LWD+1)+SUB1+Julian_date+GEdda,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
@@ -614,7 +799,52 @@ M2 = list(
 sem.fit(M2,AV2)
 sem.coefs(M2,AV2)
 sem.model.fits(M2)
+sem.plot(M2, AV2)
+
+# SEM: with AV too many NAs, it fails
+M2 = list(
+  lme(log(OringTOT+1)~log(LWD+1)+Av_depth+Wetted_width+Distance_to_sea+Average_air_temperature+SUB1+GEdda,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width+Year,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV))
+sem.fit(M2,AV)
+sem.coefs(M2,AV)
+sem.model.fits(M2)
 sem.plot(M2, AV)
 
+# taking away gtemporal variability:
+# With AVyear (averages of years) without NAs:
+M2 = list(
+  lme(log(OringTOT+1)~log(LWD+1)+Av_depth+Wetted_width+Distance_to_sea+Average_air_temperature+SUB1+GEdda,
+      random=~1|River_name/Catchment_number, na.action=na.omit, data=AVyear),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width,
+      random=~1|River_name/Catchment_number, na.action=na.omit, data=AVyear))
+sem.fit(M2,AVyear)
+sem.coefs(M2,AVyear)
+sem.model.fits(M2)
+sem.plot(M2, AVyear)
+# With AV2009 without NAs:
+M2 = list(
+  lme(log(OringTOT+1)~Av_depth+Wetted_width+Distance_to_sea+Average_air_temperature+GEdda,
+      random=~1|River_name/Catchment_number, na.action=na.omit, data=AV2009),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Wetted_width,
+      random=~1|River_name/Catchment_number, na.action=na.omit, data=AV2009))
+sem.fit(M2,AV2009)
+sem.coefs(M2,AV2009)
+sem.model.fits(M2)
+sem.plot(M2, AV2009)
 
 
+# With AVOC(exclude sites sampled only once) without NAs:
+M2 = list(
+  lme(log(OringTOT+1)~log(LWD+1)+Av_depth+Wetted_width+Distance_to_sea+Average_air_temperature+SUB1+GEdda+Year,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),na.action=na.omit, data=AVOC),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width+Year,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),na.action=na.omit, data=AVOC))
+sem.fit(M2,AVOC)
+sem.coefs(M2,AVOC)
+sem.model.fits(M2)
+sem.plot(M2, AVOC)
+
+# include interaction predators*LWD: not signif
+# include VIX?
