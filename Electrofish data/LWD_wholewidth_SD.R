@@ -16,6 +16,7 @@ library(MASS)
 library(piecewiseSEM)
 library(lme4)
 library(car)
+library(visreg)
 
 # Defining variables type: -----------------------------------------------------
 
@@ -44,6 +45,7 @@ my$SUB1<-as.factor(my$SUB1)
 my$Velocity<-as.factor(my$Velocity)
 my$Month<-as.factor(my$Month)
 my$VIX_klass<-as.factor(my$VIX_klass)
+
 
 
 # Temporal and spatial variation: what level of replication to consider --------
@@ -82,6 +84,7 @@ ggplot(my1, aes(x = Year, y = OringTOT)) +
   geom_point(aes(colour = River_name), size = 2)
 
 
+
 # Extracting averages per river and year -----------------------------------
 ### extract means per river and year: you can not do it for factors (nor binary variables)
 # I think: include only factors in the list(groups), while calculate later binary variables or  
@@ -116,8 +119,13 @@ summary(AV)
 # For some of the environmental variables det finns många NAs but LWD and fish are good.
 # suggest: start analyses, and see key drivers. For those you can always recover more values later
 
-# Add binary variables for absence/presence of fish -----------------------
+
+# Add binary and transformed variables -----------------------
 ######### add to the dataset binary variables of presence/absence for fish (as numerical variables):
+AV$log_OringTOT <- log(AV$OringTOT+1)
+AV$log_LWD <- log(AV$LWD+1)
+AV$log_GEdda<- log(AV$GEdda+1)
+
 AV$GEdda_KLASS <- ifelse(AV$GEdda > 0, c(1), c(0)) 
 head(AV)
 str(AV)
@@ -129,7 +137,11 @@ DeerEcervi$Ecervi.01 <- DeerEcervi$Ecervi
 DeerEcervi$Ecervi.01[DeerEcervi$Ecervi >0 ] <- 1
 
 
-# subsets of data ---------------------------------------------------------
+
+# Subsets of data ---------------------------------------------------------
+
+# remove NAs from full dataset
+AV2<-na.omit(AV)
 
 #choose a specific year. 2009 is that with more observation:
 AV2009<-AV[AV$Year=="2009",]
@@ -157,10 +169,11 @@ AVyear2<-na.omit(AVyear)
 
 
 #tutti i fiumi il cui nome ricorre piu'  di una volta
+n_occur <- data.frame(table(AV$River_name))
+n_occur[n_occur$Freq > 1,]
+n_occur[n_occur$Freq == 1,]
 AVOC<-AV[AV$River_name %in% n_occur$Var1[n_occur$Freq > 1],]
-
-
-
+AVOC2<-na.omit(AVOC)
 
 # SPATIAL AUTOCORRELATION -------------------------------------------------
 # One catchment contain several rivers. But also, sometimes, one same (long!) river belong to 
@@ -311,6 +324,7 @@ M2<-lme(OringTOT~LWD,random=~1|River_name, corAR1(form=~Year), data=AV) #nope
 # !!! remember to check the assumption that the time series are not correlated,
 # by looking at correlation between residuals of the model coming from each time serie
 
+
 # explore collinearity of predictors ------------------------------------
 
 #take dataframe with only environmental data and calculate model:
@@ -370,6 +384,41 @@ summary(d2)
 ord <- decorana(d2)
 ord
 
+# 1) CLIMATIC: lat, altitude, avg air temp
+M1<-lm(log(OringTOT+1)~Lat+Altitude+Average_air_temperature, data=AV2)
+vif(M1)
+# try all but choose 1
+
+# 2) GEOGRAPHIC:
+M1<-lm(log(OringTOT+1)~Distance_to_sea+Long, data=AV2)
+vif(M1)
+# I would ignore long
+
+# 3) STREAM SIZE:exaktarea+Wetted_width+Av_depth+ Maxdepth
+M1<-lm(log(OringTOT+1)~exaktarea+Wetted_width+Av_depth, data=AV2)
+vif(M1)
+M1<-lm(log(OringTOT+1)~exaktarea+Wetted_width+Maxdepth, data=AV2)
+vif(M1)
+# choose between Max or avg depth
+
+# 4) LOCAL FEATURES:
+M1<-lm(log(OringTOT+1)~Velocity+Slope_percent+SUB1, data=AV2)
+vif(M1)
+#can include all
+
+# 5) SEASONALITY
+M1<-lm(log(OringTOT+1)~Month+Julian_date, data=AV2)
+vif(M1)
+# choose 1
+
+#6) YEAR-TO_YEAR variation
+Year
+
+# 7) BIOTIC INTERACTIONS:
+M1<-lm(log(OringTOT+1)~GEdda+Lampetra+Sticklebacks+LaxTOT+Abbor+BEcrOTOT+Elrit+HarrTOT+Lake+LaxFIXTO+LaxOrtot+Eel+
+         MOrt+RegnbTOT+ROdinTOT+Cottus_spp, data=AV2)
+vif(M1)
+#better to run a PCA..But there are no obvious correlation
 
 # PCA with fish data ------------------------------------------------------
 
@@ -405,6 +454,7 @@ panel.cor <- function(x, y, digits=2, prefix="", cex.cor, ...)
   text(0.5, 0.5, txt, cex = cex.cor * r)
 }
 pairs(d, lower.panel=panel.smooth, upper.panel=panel.cor)
+
 
 
 # graphs öring -----------------------------------------------------
@@ -511,6 +561,7 @@ hist(AV$Average_air_temperature)
 hist(AV$Slope_percent)
 hist(AV$Distance_to_sea)
 hist(AV$Velocity)
+
 
 
 
@@ -623,7 +674,7 @@ summary(M1)
 
 
 
-# # explore single models for Öring continuous ----------------------------
+# explore single models for Öring continuous ----------------------------
 
 ###############  Öring continuous: exploratory
 M2<-lme(OringTOT~LWD+Average_air_temperature,random=~1|River_name/Catchment_number, 
@@ -664,7 +715,8 @@ AIC(M1,M2,M3) #meglio log
 summary(M2)
 
 
-# piecewise SEM  ----------------------------------------------------------
+
+# SEM Öring binary  ----------------------------------------------------------
 
 #BINARY
 # the best so far is:
@@ -732,56 +784,13 @@ AV2009_2<-na.omit(AV2009)
 #  does not converge
 
 
-################## CONTINUOUS
-# SEM: on AV2 and continuous:
-M2 = list(
-  lme(log(OringTOT+1)~log(LWD+1)+Av_depth+Wetted_width+Distance_to_sea+Average_air_temperature+SUB1+GEdda,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
-  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width+Year,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
-sem.fit(M2,AV2)
-sem.coefs(M2,AV2)
-sem.model.fits(M2)
-sem.plot(M2, AV)
 
-# continue with AV2 and continous: trying different predictors:
-####### move this part where you ahve PCA
-# 1) CLIMATIC: lat, altitude, avg air temp
-M1<-lm(log(OringTOT+1)~Lat+Altitude+Average_air_temperature, data=AV2)
-vif(M1)
-# try all but choose 1
 
-# 2) GEOGRAPHIC:
-M1<-lm(log(OringTOT+1)~Distance_to_sea+Long, data=AV2)
-vif(M1)
-# I would ignore long
+# SEM Öring CONTINUOUS ----------------------------------------------------
 
-# 3) STREAM SIZE:exaktarea+Wetted_width+Av_depth+ Maxdepth
-M1<-lm(log(OringTOT+1)~exaktarea+Wetted_width+Av_depth, data=AV2)
-vif(M1)
-M1<-lm(log(OringTOT+1)~exaktarea+Wetted_width+Maxdepth, data=AV2)
-vif(M1)
-# choose between Max or avg depth
+# on AV2:
 
-# 4) LOCAL FEATURES:
-M1<-lm(log(OringTOT+1)~Velocity+Slope_percent+SUB1, data=AV2)
-vif(M1)
-#can include all
-
-# 5) SEASONALITY
-M1<-lm(log(OringTOT+1)~Month+Julian_date, data=AV2)
-vif(M1)
-# choose 1
-
-#6) YEAR-TO_YEAR variation
-Year
-
-# 7) BIOTIC INTERACTIONS:
-M1<-lm(log(OringTOT+1)~GEdda+Lampetra+Sticklebacks+LaxTOT+Abbor+BEcrOTOT+Elrit+HarrTOT+Lake+LaxFIXTO+LaxOrtot+Eel+
-         MOrt+RegnbTOT+ROdinTOT+Cottus_spp, data=AV2)
-vif(M1)
-#better to run a PCA..But there are no obvious correlation
-
+# when trying different predictors:
 # 1)Climati factors: avg air temp OR lat are the best
 # 3)Stream size: exact area is signif?NO. better avg or max depth?
 # 4) inlcude all local features: velocity for LWD:no. Slope_percent for LWD:link to Öring is also suggested,
@@ -792,16 +801,75 @@ vif(M1)
 
 ### Final for AV2 for now..:
 M2 = list(
-  lme(log(OringTOT+1)~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log(LWD+1)+SUB1+Julian_date+GEdda,
+  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+GEdda,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
-  lme(log(LWD+1)~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date,
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
 sem.fit(M2,AV2)
 sem.coefs(M2,AV2)
 sem.model.fits(M2)
 sem.plot(M2, AV2)
+sem.coefs(M2,AV2,standardize = "scale") 
+sem.coefs(M2,AV2,standardize = "range")
 
-# SEM: with AV too many NAs, it fails
+#######partial correlation plots:
+#plot partial residuals plots:
+partial.resid(.formula = log_OringTOT ~ Average_air_temperature, M2, AV2)
+partial.resid(.formula = log_OringTOT ~ Distance_to_sea, M2, AV2)
+partial.resid(.formula = log_OringTOT ~ Wetted_width, M2, AV2)
+partial.resid(.formula = log_OringTOT ~ Av_depth, M2, AV2)
+partial.resid(.formula = log_OringTOT ~ log_LWD, M2, AV2)
+partial.resid(.formula = log_OringTOT ~ Julian_date, M2, AV2)
+partial.resid(.formula = log_OringTOT ~ GEdda, M2, AV2)
+partial.resid(.formula = log_LWD ~ Average_air_temperature, M2, AV2)
+partial.resid(.formula = log_LWD ~ Distance_to_sea, M2, AV2)
+partial.resid(.formula = log_LWD ~ Wetted_width, M2, AV2)
+partial.resid(.formula = log_LWD ~ Av_depth, M2, AV2)
+partial.resid(.formula = log_LWD ~ Julian_date, M2, AV2)
+partial.resid(.formula = log_LWD ~ Year, M2, AV2)
+# to calculate manually partial regression plots have a look at point level analysis PF
+# or with visreg. maybe difference in dot's position and axis labels are due to the fact that piecewise account for all 
+# models in the basis set. however, if that was the reason, endogenous facxtors should look the same, but they don't
+M1<-lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+GEdda,
+        random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2)
+visreg(M1, "log_LWD")
+#or better layout:
+visreg(M1,"log_LWD",type="conditional",line=list(col="red"),points=list(cex=1, pch=16),xlab="Average_air_temperature")
+visreg(M1,"Average_air_temperature",type="contrast",line=list(col="red"),points=list(cex=1, pch=16),xlab="Average_air_temperature")
+
+# using pike as endogenous: logtranform it
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+log_GEdda,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_GEdda~Distance_to_sea+Wetted_width+Av_depth+log_LWD+Year,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV2)
+sem.coefs(M2,AV2,standardize = "scale") 
+sem.coefs(M2,AV2,standardize = "range")
+
+# using pike as endogenous: transform it into binary
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+GEdda_KLASS,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(GEdda_KLASS~Wetted_width+log_LWD+Year,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV2)
+sem.coefs(M2,AV2,standardize = "scale") 
+sem.coefs(M2,AV2,standardize = "range")
+
+
+# on other datsets:
+# on AV: too many NAs, it fails
 M2 = list(
   lme(log(OringTOT+1)~log(LWD+1)+Av_depth+Wetted_width+Distance_to_sea+Average_air_temperature+SUB1+GEdda,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV),
@@ -812,8 +880,8 @@ sem.coefs(M2,AV)
 sem.model.fits(M2)
 sem.plot(M2, AV)
 
-# taking away gtemporal variability:
-# With AVyear (averages of years) without NAs:
+# taking away temporal variability:
+# On AVyear (averages of years) without NAs:
 M2 = list(
   lme(log(OringTOT+1)~log(LWD+1)+Av_depth+Wetted_width+Distance_to_sea+Average_air_temperature+SUB1+GEdda,
       random=~1|River_name/Catchment_number, na.action=na.omit, data=AVyear),
@@ -823,7 +891,7 @@ sem.fit(M2,AVyear)
 sem.coefs(M2,AVyear)
 sem.model.fits(M2)
 sem.plot(M2, AVyear)
-# With AV2009 without NAs:
+# On AV2009 without NAs:
 M2 = list(
   lme(log(OringTOT+1)~Av_depth+Wetted_width+Distance_to_sea+Average_air_temperature+GEdda,
       random=~1|River_name/Catchment_number, na.action=na.omit, data=AV2009),
@@ -834,8 +902,7 @@ sem.coefs(M2,AV2009)
 sem.model.fits(M2)
 sem.plot(M2, AV2009)
 
-
-# With AVOC(exclude sites sampled only once) without NAs:
+# On AVOC(exclude sites sampled only once) without NAs:
 M2 = list(
   lme(log(OringTOT+1)~log(LWD+1)+Av_depth+Wetted_width+Distance_to_sea+Average_air_temperature+SUB1+GEdda+Year,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),na.action=na.omit, data=AVOC),
