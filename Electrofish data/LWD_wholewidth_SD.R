@@ -122,15 +122,27 @@ summary(AV)
 
 # Add binary and transformed variables -----------------------
 ######### add to the dataset binary variables of presence/absence for fish (as numerical variables):
+
+# into binary:
+AV$OringTOT_KLASS <- ifelse(AV$OringTOT > 0, c(1), c(0)) 
+# potential predators
+AV$GEdda_KLASS <- ifelse(AV$GEdda > 0, c(1), c(0)) 
+AV$Lake_KLASS <- ifelse(AV$Lake > 0, c(1), c(0)) 
+# potential competitors
+AV$Cottus_spp_KLASS <- ifelse(AV$Cottus_spp > 0, c(1), c(0)) 
+AV$BEcrOTOT_KLASS <- ifelse(AV$BEcrOTOT > 0, c(1), c(0)) 
+AV$HarrTOT_KLASS <- ifelse(AV$HarrTOT > 0, c(1), c(0)) 
+AV$LaxTOT_KLASS <- ifelse(AV$LaxTOT > 0, c(1), c(0)) 
+
+#Log transformation:
 AV$log_OringTOT <- log(AV$OringTOT+1)
 AV$log_LWD <- log(AV$LWD+1)
 AV$log_GEdda<- log(AV$GEdda+1)
-
-AV$GEdda_KLASS <- ifelse(AV$GEdda > 0, c(1), c(0)) 
-head(AV)
-str(AV)
-AV$OringTOT_KLASS <- ifelse(AV$OringTOT > 0, c(1), c(0)) 
-AV$LaxTOT_KLASS <- ifelse(AV$LaxTOT > 0, c(1), c(0)) 
+AV$log_Lake<- log(AV$Lake+1)
+AV$log_Cottus_spp<- log(AV$Cottus_spp+1)
+AV$log_BEcrOTOT<- log(AV$BEcrOTOT+1)
+AV$log_HarrTOT<- log(AV$HarrTOT+1)
+AV$log_LaxTOT<- log(AV$LaxTOT+1)
 
 # or use (from Zuur 2010):
 DeerEcervi$Ecervi.01 <- DeerEcervi$Ecervi
@@ -788,22 +800,26 @@ AV2009_2<-na.omit(AV2009)
 
 # SEM Öring CONTINUOUS ----------------------------------------------------
 
-# on AV2:
+# on AV2 (whole dataset without NAs)
 
 # when trying different predictors:
-# 1)Climati factors: avg air temp OR lat are the best
+# 1)Climatic factors: avg air temp OR lat are the best
 # 3)Stream size: exact area is signif?NO. better avg or max depth?
 # 4) inlcude all local features: velocity for LWD:no. Slope_percent for LWD:link to Öring is also suggested,
 # links are positive in both cases but is supported by theory? ask Erik, meanwhile go on without
 #5) add month or julian date:
 # 6) biotic interactions: +GEdda+Lampetra+Sticklebacks+LaxTOT+Abbor+Lake+Cottus_spp were signif, but overall fit not good
 # talk to Erik to know what makes sense. for now I keep only Gedda
+# include interaction predators*LWD: not signif
+# include VIX?
 
-### Final for AV2 for now..:
+### Final using fish spp as exogenous and continuous:
+# Lake and Gedda show negative relationships. marginal R2= 11 and 11
 M2 = list(
-  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+GEdda,
+  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
-  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date,
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
 sem.fit(M2,AV2)
 sem.coefs(M2,AV2)
@@ -811,6 +827,29 @@ sem.model.fits(M2)
 sem.plot(M2, AV2)
 sem.coefs(M2,AV2,standardize = "scale") 
 sem.coefs(M2,AV2,standardize = "range")
+
+# brook trout and grayling (competitiors) as explanatory factors: not signif
+# LAxTOT seems to have a weak positive effect on Öring, which does not make sense
+# including a correlation between SUB1 and slope doesn't change anything
+# including sub as endogenous explained by slope doesn't work smoothly, I d need to add many other links
+
+### using fish spp as exogenous and binary: brecro have negative effects.Marginal R=10 and 11
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +BEcrOTOT_KLASS,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV2)
+sem.coefs(M2,AV2,standardize = "scale") 
+sem.coefs(M2,AV2,standardize = "range")
+# lake and herr are not signif. LAx and cottus have a positive effects which does not seem correct
+# there is a negative relationship from gedda to LWD..if modeled as correlation, AIC decreases of ca 6 units 
+
+
 
 #######partial correlation plots:
 #plot partial residuals plots:
@@ -837,13 +876,83 @@ visreg(M1, "log_LWD")
 visreg(M1,"log_LWD",type="conditional",line=list(col="red"),points=list(cex=1, pch=16),xlab="Average_air_temperature")
 visreg(M1,"Average_air_temperature",type="contrast",line=list(col="red"),points=list(cex=1, pch=16),xlab="Average_air_temperature")
 
-# using pike as endogenous: logtranform it
+# using fish spp (inlcuding only predators: gedda and lake) as endogenous: logtranform them
 M2 = list(
-  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+log_GEdda,
+  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +log_GEdda+log_Lake,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
-  lme(log_GEdda~Distance_to_sea+Wetted_width+Av_depth+log_LWD+Year,
+  lme(log_GEdda~Distance_to_sea+Wetted_width+Av_depth+log_LWD+Year+Slope_percent,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
-  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date,
+  lme(log_Lake~Distance_to_sea+Slope_percent+log_GEdda,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV2)
+sem.coefs(M2,AV2,standardize = "scale") 
+sem.coefs(M2,AV2,standardize = "range")
+# adding competitors:
+# interaction lax or harr or cottus with slope explaining öring: does not converge for Harr, not signif for lax and cottus
+
+# if I use VIX:
+# 1)on the top of the factors that are already in the model: vix has positive link to öring, negative to gädda and lake,
+# which are not affecting öring any longer, but they are still required in the model to have a Fisher C with p>0.05 (!)
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +VIX,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_GEdda~Distance_to_sea+Wetted_width+Av_depth+log_LWD+Year+Slope_percent+VIX,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_Lake~Distance_to_sea+Slope_percent+log_GEdda+VIX,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV2)
+# 2) but delete factors included in the estimation of VIX such as air temp, width, slope as explanatory for only fish:
+# it is not enough to explain them.If those factors are removed also as explanatory for LWD:bad, R2 for LWD decrease a lot
+M2 = list(
+  lme(log_OringTOT~Distance_to_sea+Av_depth+log_LWD+SUB1+Julian_date+log_GEdda+log_Lake+VIX,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_GEdda~Av_depth+log_LWD+Year+VIX,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_Lake~Distance_to_sea+log_LWD+log_GEdda+VIX,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Distance_to_sea+Av_depth+Year+Julian_date,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+
+# compare with the simple mixed model öring vs VIX: check how to compare fit!
+M1<-lme(log_OringTOT~VIX,random=~1|River_name/Catchment_number, corAR1(form=~Year), method="ML",data=AV2)
+summary(M1)
+anova(M1)
+M0<-lme(log_OringTOT~1,random=~1|River_name/Catchment_number, corAR1(form=~Year),method="ML", data=AV2)
+anova(M1,M0)
+
+M1<-lme(log_OringTOT~VIX,random=~1|River_name/Catchment_number, corAR1(form=~Year), method="REML",data=AV2)
+M0<-gls(log_OringTOT~VIX, corAR1(form=~Year|River_name/Catchment_number),method="REML", data=AV2)
+M0<-lme(log_OringTOT~VIX, random=~1|River_name/Catchment_number,method="REML", data=AV2)
+anova(M1,M0)
+
+plot(AV2$VIX,AV2$log_OringTOT)
+sem.model.fits(M1)
+
+# using pike and lake as endogenous and binary:
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+     ,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(GEdda_KLASS~Wetted_width+log_LWD+Year+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(Lake_KLASS~Average_air_temperature+Wetted_width+Distance_to_sea+Slope_percent+SUB1+GEdda_KLASS,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
 sem.fit(M2,AV2)
 sem.coefs(M2,AV2)
@@ -852,23 +961,10 @@ sem.plot(M2, AV2)
 sem.coefs(M2,AV2,standardize = "scale") 
 sem.coefs(M2,AV2,standardize = "range")
 
-# using pike as endogenous: transform it into binary
-M2 = list(
-  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+GEdda_KLASS,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
-  lme(GEdda_KLASS~Wetted_width+log_LWD+Year,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
-  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
-sem.fit(M2,AV2)
-sem.coefs(M2,AV2)
-sem.model.fits(M2)
-sem.plot(M2, AV2)
-sem.coefs(M2,AV2,standardize = "scale") 
-sem.coefs(M2,AV2,standardize = "range")
 
 
-# on other datsets:
+
+########## on other datsets:
 # on AV: too many NAs, it fails
 M2 = list(
   lme(log(OringTOT+1)~log(LWD+1)+Av_depth+Wetted_width+Distance_to_sea+Average_air_temperature+SUB1+GEdda,
@@ -913,5 +1009,4 @@ sem.coefs(M2,AVOC)
 sem.model.fits(M2)
 sem.plot(M2, AVOC)
 
-# include interaction predators*LWD: not signif
-# include VIX?
+
