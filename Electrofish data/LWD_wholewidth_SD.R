@@ -832,6 +832,21 @@ sem.coefs(M2,AV2,standardize = "range")
 # LAxTOT seems to have a weak positive effect on Öring, which does not make sense
 # including a correlation between SUB1 and slope doesn't change anything
 # including sub as endogenous explained by slope doesn't work smoothly, I d need to add many other links
+# include interactions: 
+# a) between predators (Gädda or lake) and LWD: not significant
+# b) between stream width and LWD: not significant
+# are there abiotics that can potentially be influenced by LWD? depth or width (LWD can create pools), but link is negative, 
+# so causal link has to go from depth to LWD
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Av_depth+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+log_LWD*Wetted_width,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+
 
 ### using fish spp as exogenous and binary: brecro have negative effects.Marginal R=10 and 11
 M2 = list(
