@@ -1,7 +1,7 @@
 rm(list=ls())
 setwd("C:/Users/sedi0002/Google Drive/Dod ved/Electrofish data")
 setwd("C:/Users/serena/Google Drive/Dod ved/Electrofish data")
-my<-read.table("LWD_wholewidth_SD3.txt",header=T)
+my<-read.table("LWD_wholewidth_SD6.txt",header=T)
 
 head(my)
 str(my)
@@ -92,14 +92,14 @@ ggplot(my1, aes(x = Year, y = OringTOT)) +
 # Also, keep only variables of interest, you can always add later
 AV<-aggregate(cbind(my$Altitude,my$ddlat,my$ddlong,my$LWD,my$exaktarea,my$Wetted_width,my$Site_length
                     ,my$Site_area,my$Maxdepth,my$Av_depth,my$Water_temperature,my$Average_air_temperature
-                    ,my$SUB1,my$Site_habitat_index,my$Velocity,my$Slope_percent,my$Distance_to_sea,my$Month,my$Julian_date
+                    ,my$SUB1,my$Site_habitat_index,my$Velocity,my$Slope_percent,my$Distance_to_sea,my$Month,my$Julian_date,my$Typ_of_migration_numerical
                     ,my$Abbor,my$BEcrOTOT,my$Elrit,my$GEdda,my$HarrTOT,my$Lake,my$LaxFIXTO,my$LaxOrtot,my$LaxTOT,my$Eel,my$MOrt,my$OringTOT
                     ,my$RegnbTOT,my$ROdinTOT,my$Cottus_spp,my$Lampetra,my$Sticklebacks,my$VIX,my$VIX_klass,my$Number_of_fish_species
                     ),list(my$River_name,my$Catchment_number,my$Year),mean)
 names(AV)<-c("River_name", "Catchment_number","Year", 
              "Altitude","Lat","Long","LWD","exaktarea","Wetted_width","Site_length","Site_area",
              "Maxdepth","Av_depth","Water_temperature","Average_air_temperature","SUB1","Site_habitat_index",
-             "Velocity","Slope_percent","Distance_to_sea","Month","Julian_date","Abbor","BEcrOTOT","Elrit","GEdda",
+             "Velocity","Slope_percent","Distance_to_sea","Month","Julian_date","Type_migration_continuous","Abbor","BEcrOTOT","Elrit","GEdda",
              "HarrTOT","Lake","LaxFIXTO","LaxOrtot","LaxTOT","Eel","MOrt","OringTOT","RegnbTOT","ROdinTOT","Cottus_spp",
              "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species")
 head(AV)
@@ -118,6 +118,28 @@ AV1
 summary(AV)
 # For some of the environmental variables det finns många NAs but LWD and fish are good.
 # suggest: start analyses, and see key drivers. For those you can always recover more values later
+
+
+# not to lose too much info, I delete NA at the level of site, so that I can still get an average per river
+# (if not all sites have NAs for that river):
+summary(my)
+my_Migration_NAremoved<-my[!is.na(my$Typ_of_migration_numerical),]
+my_Migration_0<-my_Migration_NAremoved[my_Migration_NAremoved$Typ_of_migration_numerical=="0",]
+my_Migration_1<-my_Migration_NAremoved[my_Migration_NAremoved$Typ_of_migration_numerical=="1",]
+
+# than take the averages:
+AV_Migration_NAremoved<-aggregate(cbind(my_Migration_NAremoved$Altitude,my_Migration_NAremoved$ddlat,my_Migration_NAremoved$ddlong,my_Migration_NAremoved$LWD,my_Migration_NAremoved$exaktarea,my_Migration_NAremoved$Wetted_width,my_Migration_NAremoved$Site_length
+                    ,my_Migration_NAremoved$Site_area,my_Migration_NAremoved$Maxdepth,my_Migration_NAremoved$Av_depth,my_Migration_NAremoved$Water_temperature,my_Migration_NAremoved$Average_air_temperature
+                    ,my_Migration_NAremoved$SUB1,my_Migration_NAremoved$Site_habitat_index,my_Migration_NAremoved$Velocity,my_Migration_NAremoved$Slope_percent,my_Migration_NAremoved$Distance_to_sea,my_Migration_NAremoved$Month,my_Migration_NAremoved$Julian_date,my_Migration_NAremoved$Typ_of_migration_numerical
+                    ,my_Migration_NAremoved$Abbor,my_Migration_NAremoved$BEcrOTOT,my_Migration_NAremoved$Elrit,my_Migration_NAremoved$GEdda,my_Migration_NAremoved$HarrTOT,my_Migration_NAremoved$Lake,my_Migration_NAremoved$LaxFIXTO,my_Migration_NAremoved$LaxOrtot,my_Migration_NAremoved$LaxTOT,my_Migration_NAremoved$Eel,my_Migration_NAremoved$MOrt,my_Migration_NAremoved$OringTOT
+                    ,my_Migration_NAremoved$RegnbTOT,my_Migration_NAremoved$ROdinTOT,my_Migration_NAremoved$Cottus_spp,my_Migration_NAremoved$Lampetra,my_Migration_NAremoved$Sticklebacks,my_Migration_NAremoved$VIX,my_Migration_NAremoved$VIX_klass,my_Migration_NAremoved$Number_of_fish_species
+),list(my_Migration_NAremoved$River_name,my_Migration_NAremoved$Catchment_number,my_Migration_NAremoved$Year),mean)
+names(AV_Migration_NAremoved)<-c("River_name", "Catchment_number","Year", 
+             "Altitude","Lat","Long","LWD","exaktarea","Wetted_width","Site_length","Site_area",
+             "Maxdepth","Av_depth","Water_temperature","Average_air_temperature","SUB1","Site_habitat_index",
+             "Velocity","Slope_percent","Distance_to_sea","Month","Julian_date","Type_migration_continuous","Abbor","BEcrOTOT","Elrit","GEdda",
+             "HarrTOT","Lake","LaxFIXTO","LaxOrtot","LaxTOT","Eel","MOrt","OringTOT","RegnbTOT","ROdinTOT","Cottus_spp",
+             "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species")
 
 
 # Add binary and transformed variables -----------------------
@@ -144,6 +166,29 @@ AV$log_BEcrOTOT<- log(AV$BEcrOTOT+1)
 AV$log_HarrTOT<- log(AV$HarrTOT+1)
 AV$log_LaxTOT<- log(AV$LaxTOT+1)
 
+# to the other dataset:
+# into binary:
+AV_Migration_NAremoved$OringTOT_KLASS <- ifelse(AV_Migration_NAremoved$OringTOT > 0, c(1), c(0)) 
+# potential predators
+AV_Migration_NAremoved$GEdda_KLASS <- ifelse(AV_Migration_NAremoved$GEdda > 0, c(1), c(0)) 
+AV_Migration_NAremoved$Lake_KLASS <- ifelse(AV_Migration_NAremoved$Lake > 0, c(1), c(0)) 
+# potential competitors
+AV_Migration_NAremoved$Cottus_spp_KLASS <- ifelse(AV_Migration_NAremoved$Cottus_spp > 0, c(1), c(0)) 
+AV_Migration_NAremoved$BEcrOTOT_KLASS <- ifelse(AV_Migration_NAremoved$BEcrOTOT > 0, c(1), c(0)) 
+AV_Migration_NAremoved$HarrTOT_KLASS <- ifelse(AV_Migration_NAremoved$HarrTOT > 0, c(1), c(0)) 
+AV_Migration_NAremoved$LaxTOT_KLASS <- ifelse(AV_Migration_NAremoved$LaxTOT > 0, c(1), c(0)) 
+
+#Log transformation:
+AV_Migration_NAremoved$log_OringTOT <- log(AV_Migration_NAremoved$OringTOT+1)
+AV_Migration_NAremoved$log_LWD <- log(AV_Migration_NAremoved$LWD+1)
+AV_Migration_NAremoved$log_GEdda<- log(AV_Migration_NAremoved$GEdda+1)
+AV_Migration_NAremoved$log_Lake<- log(AV_Migration_NAremoved$Lake+1)
+AV_Migration_NAremoved$log_Cottus_spp<- log(AV_Migration_NAremoved$Cottus_spp+1)
+AV_Migration_NAremoved$log_BEcrOTOT<- log(AV_Migration_NAremoved$BEcrOTOT+1)
+AV_Migration_NAremoved$log_HarrTOT<- log(AV_Migration_NAremoved$HarrTOT+1)
+AV_Migration_NAremoved$log_LaxTOT<- log(AV_Migration_NAremoved$LaxTOT+1)
+
+
 # or use (from Zuur 2010):
 DeerEcervi$Ecervi.01 <- DeerEcervi$Ecervi
 DeerEcervi$Ecervi.01[DeerEcervi$Ecervi >0 ] <- 1
@@ -154,6 +199,10 @@ DeerEcervi$Ecervi.01[DeerEcervi$Ecervi >0 ] <- 1
 
 # remove NAs from full dataset
 AV2<-na.omit(AV)
+
+# or from AV_Migration_NAremoved:
+AV_Migration_NAremoved2<-na.omit(AV_Migration_NAremoved)
+
 
 #choose a specific year. 2009 is that with more observation:
 AV2009<-AV[AV$Year=="2009",]
@@ -808,10 +857,9 @@ AV2009_2<-na.omit(AV2009)
 # 4) inlcude all local features: velocity for LWD:no. Slope_percent for LWD:link to Öring is also suggested,
 # links are positive in both cases but is supported by theory? ask Erik, meanwhile go on without
 #5) add month or julian date:
-# 6) biotic interactions: +GEdda+Lampetra+Sticklebacks+LaxTOT+Abbor+Lake+Cottus_spp were signif, but overall fit not good
-# talk to Erik to know what makes sense. for now I keep only Gedda
+# 6) biotic interactions: potenatial predatrors are GEdda and Lake. Potential competitors are:LaxTOT,Becro, Harr,Cottus_spp 
 # include interaction predators*LWD: not signif
-# include VIX?
+# include VIX? not for now, preliminary results not promising
 
 ### Final using fish spp as exogenous and continuous:
 # Lake and Gedda show negative relationships. marginal R2= 11 and 11
@@ -828,25 +876,91 @@ sem.plot(M2, AV2)
 sem.coefs(M2,AV2,standardize = "scale") 
 sem.coefs(M2,AV2,standardize = "range")
 
-# brook trout and grayling (competitiors) as explanatory factors: not signif
-# LAxTOT seems to have a weak positive effect on Öring, which does not make sense
+# brook trout (becro) and grayling (Harr) (competitiors) as explanatory factors: not signif
+# LAxTOT or Cottus seems to have a weak positive effect on Öring, which does not make sense
 # including a correlation between SUB1 and slope doesn't change anything
-# including sub as endogenous explained by slope doesn't work smoothly, I d need to add many other links
+# including SUB as endogenous explained by slope doesn't work smoothly, I d need to add many other links
 # include interactions: 
-# a) between predators (Gädda or lake) and LWD: not significant
-# b) between stream width and LWD: not significant
+# a) between predators (Gädda or lake) and LWD (on öring): not significant
+# b) between stream width and LWD (on öring): not significant
 # are there abiotics that can potentially be influenced by LWD? depth or width (LWD can create pools), but link is negative, 
 # so causal link has to go from depth to LWD
+# test interaction between air temperature or latitude (instället air temp) and pike on öring: both not signif
+# interaction Julian date*distance to sea on LWD and on öring:nope
+# interaction between competitors (LaxTOT,BEcrOTOT, HarrTOT,Cottus_spp) and environmental conditions 
+# (slope, depth, width, temp): none of the possible conbination is signif
+# test effects of number fish spp on öring:  signif but has a positive effects! Skip it?
+
+
+### including migration type as continuous. 
+# I use dataset where I excluded NA for migration type at site level. The above model works fine, explained 
+# variation is now 12% for both öring and LWD (without including migration type). When I add:
+# a)migration type: signif and positive, where do I end up?
 M2 = list(
-  lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Av_depth+SUB1+Julian_date+Slope_percent
-      +GEdda+Lake+log_LWD*Wetted_width,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
   lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
-sem.fit(M2,AV2)
-sem.coefs(M2,AV2)
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2)
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.model.fits(M2)
+sem.plot(M2, AV_Migration_NAremoved2)
+
+#b)interaction type of migration and number of spp? dist to sea and year not signif for öring but necessary 
+# for good model fit, I use correlation. However, interaction has negative effects on öring, but n. of spp is 
+# positively linked to öring. Does it make sense?
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous*Number_of_fish_species,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.fit(M2,AV_Migration_NAremoved2, corr.errors = c("Distance_to_sea~~log_OringTOT","Year~~log_OringTOT"))
 sem.model.fits(M2)
 
+# c)interaction migration type as continuous*depth or migration type as continuous*width : signif! 
+# In both cases: dist to sea and year not signif for öring but necessary for good model fit
+# deleting link but using correlation:
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous*Av_depth,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2, corr.errors = c("Distance_to_sea~~log_OringTOT","Year~~log_OringTOT"))
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.model.fits(M2)
+
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous*Wetted_width,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2, corr.errors = c("Distance_to_sea~~log_OringTOT","Year~~log_OringTOT"))
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.plot(M2, AV_Migration_NAremoved2)
+sem.model.fits(M2)
+
+# including link from depth or width to type of migration:
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2)
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.model.fits(M2)
+sem.plot(M2, AV_Migration_NAremoved2)
+
+
+plot(AV_Migration_NAremoved2$Wetted_width,AV_Migration_NAremoved2$Type_migration_continuous)
+plot(AV_Migration_NAremoved2$Av_depth,AV_Migration_NAremoved2$Type_migration_continuous)
+cor.test(AV_Migration_NAremoved2$Wetted_width,AV_Migration_NAremoved2$Type_migration_continuous, method="spearman")
+cor.test(AV_Migration_NAremoved2$Av_depth,AV_Migration_NAremoved2$Type_migration_continuous, method="spearman")
 
 ### using fish spp as exogenous and binary: brecro have negative effects.Marginal R=10 and 11
 M2 = list(
