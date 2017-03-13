@@ -85,7 +85,7 @@ ggplot(my1, aes(x = Year, y = OringTOT)) +
 
 
 
-# Extracting averages per river and year -----------------------------------
+# Extracting averages per river and year without removing NAs -----------------------------------
 ### extract means per river and year: you can not do it for factors (nor binary variables)
 # I think: include only factors in the list(groups), while calculate later binary variables or  
 # inlcude also those binary variables and keep them as numeric, and convert them later all no-zero numbers into ones 
@@ -120,14 +120,15 @@ summary(AV)
 # suggest: start analyses, and see key drivers. For those you can always recover more values later
 
 
+
+# Extracting averages per river and year after removing NAs (for sp) - better --------
+
 # not to lose too much info, I delete NA at the level of site, so that I can still get an average per river
 # (if not all sites have NAs for that river):
 summary(my)
 my_Migration_NAremoved<-my[!is.na(my$Typ_of_migration_numerical),]
-my_Migration_0<-my_Migration_NAremoved[my_Migration_NAremoved$Typ_of_migration_numerical=="0",]
-my_Migration_1<-my_Migration_NAremoved[my_Migration_NAremoved$Typ_of_migration_numerical=="1",]
 
-# than take the averages:
+# than take the averages: type of migration will be a continuos variables
 AV_Migration_NAremoved<-aggregate(cbind(my_Migration_NAremoved$Altitude,my_Migration_NAremoved$ddlat,my_Migration_NAremoved$ddlong,my_Migration_NAremoved$LWD,my_Migration_NAremoved$exaktarea,my_Migration_NAremoved$Wetted_width,my_Migration_NAremoved$Site_length
                     ,my_Migration_NAremoved$Site_area,my_Migration_NAremoved$Maxdepth,my_Migration_NAremoved$Av_depth,my_Migration_NAremoved$Water_temperature,my_Migration_NAremoved$Average_air_temperature
                     ,my_Migration_NAremoved$SUB1,my_Migration_NAremoved$Site_habitat_index,my_Migration_NAremoved$Velocity,my_Migration_NAremoved$Slope_percent,my_Migration_NAremoved$Distance_to_sea,my_Migration_NAremoved$Month,my_Migration_NAremoved$Julian_date,my_Migration_NAremoved$Typ_of_migration_numerical
@@ -142,7 +143,31 @@ names(AV_Migration_NAremoved)<-c("River_name", "Catchment_number","Year",
              "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species")
 
 
-# Add binary and transformed variables -----------------------
+# Subset for only migrating or resident -----------------------------------
+# or # specific subsets:
+my_Migration_0<-my_Migration_NAremoved[my_Migration_NAremoved$Typ_of_migration_numerical=="0",]
+my_Migration_1<-my_Migration_NAremoved[my_Migration_NAremoved$Typ_of_migration_numerical=="1",]
+# if I consider subset with only migrating (or only resident):
+AV_migrants<-aggregate(cbind(my_Migration_0$Altitude,my_Migration_0$ddlat,my_Migration_0$ddlong,my_Migration_0$LWD,my_Migration_0$exaktarea,my_Migration_0$Wetted_width,my_Migration_0$Site_length
+                                        ,my_Migration_0$Site_area,my_Migration_0$Maxdepth,my_Migration_0$Av_depth,my_Migration_0$Water_temperature,my_Migration_0$Average_air_temperature
+                                        ,my_Migration_0$SUB1,my_Migration_0$Site_habitat_index,my_Migration_0$Velocity,my_Migration_0$Slope_percent,my_Migration_0$Distance_to_sea,my_Migration_0$Month,my_Migration_0$Julian_date,my_Migration_0$Typ_of_migration_numerical
+                                        ,my_Migration_0$Abbor,my_Migration_0$BEcrOTOT,my_Migration_0$Elrit,my_Migration_0$GEdda,my_Migration_0$HarrTOT,my_Migration_0$Lake,my_Migration_0$LaxFIXTO,my_Migration_0$LaxOrtot,my_Migration_0$LaxTOT,my_Migration_0$Eel,my_Migration_0$MOrt,my_Migration_0$OringTOT
+                                        ,my_Migration_0$RegnbTOT,my_Migration_0$ROdinTOT,my_Migration_0$Cottus_spp,my_Migration_0$Lampetra,my_Migration_0$Sticklebacks,my_Migration_0$VIX,my_Migration_0$VIX_klass,my_Migration_0$Number_of_fish_species
+),list(my_Migration_0$River_name,my_Migration_0$Catchment_number,my_Migration_0$Year),mean)
+names(AV_migrants)<-c("River_name", "Catchment_number","Year", 
+                                 "Altitude","Lat","Long","LWD","exaktarea","Wetted_width","Site_length","Site_area",
+                                 "Maxdepth","Av_depth","Water_temperature","Average_air_temperature","SUB1","Site_habitat_index",
+                                 "Velocity","Slope_percent","Distance_to_sea","Month","Julian_date","Type_migration_continuous","Abbor","BEcrOTOT","Elrit","GEdda",
+                                 "HarrTOT","Lake","LaxFIXTO","LaxOrtot","LaxTOT","Eel","MOrt","OringTOT","RegnbTOT","ROdinTOT","Cottus_spp",
+                                 "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species")
+# add log trasformed var:
+AV_migrants$log_OringTOT <- log(AV_migrants$OringTOT+1)
+AV_migrants$log_LWD <- log(AV_migrants$LWD+1)
+
+# remove NAs from full dataset
+AV_migrants2<-na.omit(AV_migrants)
+
+# Add binary and transformed variables to the right dataset -----------------------
 ######### add to the dataset binary variables of presence/absence for fish (as numerical variables):
 
 # into binary:
@@ -235,6 +260,7 @@ n_occur[n_occur$Freq > 1,]
 n_occur[n_occur$Freq == 1,]
 AVOC<-AV[AV$River_name %in% n_occur$Var1[n_occur$Freq > 1],]
 AVOC2<-na.omit(AVOC)
+
 
 # SPATIAL AUTOCORRELATION -------------------------------------------------
 # One catchment contain several rivers. But also, sometimes, one same (long!) river belong to 
@@ -777,75 +803,6 @@ summary(M2)
 
 
 
-# SEM Öring binary  ----------------------------------------------------------
-
-#BINARY
-# the best so far is:
-### SEM: on AV2 (no NAs) and binary:
-M2 = list(
-  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+Wetted_width+Year
-        +(1|Catchment_number/River_name),family=binomial,data=AV2),
-  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width+Year,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
-sem.fit(M2,AV2)
-sem.coefs(M2,AV2)
-sem.model.fits(M2)
-sem.plot(M2, AV)
-# if I trasnform some predictors? boh..
-M2 = list(
-  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+log(Wetted_width)+log(Distance_to_sea)
-        +(1|Catchment_number/River_name),family=binomial,data=AV2),
-  lme(log(LWD+1)~Average_air_temperature+Av_depth+log(Wetted_width)+Year,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
-sem.fit(M2,AV2)
-sem.coefs(M2,AV2)
-sem.model.fits(M2)
-sem.plot(M2, AV)
-
-# other attempts, less succeful:
-# SEM: on AV and binary:(BUT no temp correlation for öring): run again
-M2 = list(
-  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+Wetted_width+Average_air_temperature+SUB1
-        +(1|Catchment_number/River_name),family=binomial,data=AV),
-  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width+Year,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV))
-sem.fit(M2,AV)
-sem.coefs(M2,AV)
-sem.model.fits(M2)
-sem.plot(M2, AV)
-
-# SEM: on AVyear (averages of years) and binary:
-M2 = list(
-  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+Wetted_width+Average_air_temperature+SUB1
-        +(1|Catchment_number/River_name),family=binomial,data=AVyear),
-  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width,
-      random=~1|River_name/Catchment_number, data=AVyear))
-sem.fit(M2,AVyear)
-#  remove NAs:
-AVyear2<-na.omit(AVyear)
-M2 = list(
-  glmer(OringTOT_KLASS~Av_depth+SUB1
-        +(1|Catchment_number/River_name),family=binomial,data=AVyear2),
-  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width,
-      random=~1|River_name/Catchment_number, data=AVyear2))
-sem.fit(M2,AVyear2)
-sem.coefs(M2,AVyear2)
-sem.model.fits(AVyear2)
-sem.plot(M2, AVyear2)
-
-# only with 2009 values:
-M2 = list(
-  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+SUB1+ GEdda_KLASS
-        +(1|Catchment_number/River_name),family=binomial,data=AV2009),
-  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width,
-      random=~1|River_name/Catchment_number, data=AV2009))
-sem.fit(M2,AVyear)
-# remove NAs
-AV2009_2<-na.omit(AV2009)
-#  does not converge
-
-
-
 
 # SEM Öring CONTINUOUS ----------------------------------------------------
 
@@ -892,10 +849,9 @@ sem.coefs(M2,AV2,standardize = "range")
 # test effects of number fish spp on öring:  signif but has a positive effects! Skip it?
 
 
-### including migration type as continuous. 
-# I use dataset where I excluded NA for migration type at site level. The above model works fine, explained 
-# variation is now 12% for both öring and LWD (without including migration type). When I add:
-# a)migration type: signif and positive, where do I end up?
+##### BEST SO FAR: including migration type as continuous. 
+# I use dataset where I excluded NA for migration type at site level. When I add:
+# a)migration type: signif and positive. Explained variance 21-12%!
 M2 = list(
   lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
       +GEdda+Lake+Type_migration_continuous,
@@ -907,18 +863,30 @@ sem.coefs(M2,AV_Migration_NAremoved2)
 sem.model.fits(M2)
 sem.plot(M2, AV_Migration_NAremoved2)
 
-#b)interaction type of migration and number of spp? dist to sea and year not signif for öring but necessary 
-# for good model fit, I use correlation. However, interaction has negative effects on öring, but n. of spp is 
-# positively linked to öring. Does it make sense?
+
+# other options to deal with type of migration -----------------------------
+
+#b) n. of spp determining migration type that in turn influences öring?too complex model, often does not converge
+hist(AV_Migration_NAremoved2$Type_migration_continuous)
+glmer(Type_migration_continuous~Number_of_fish_species+(1|River_name/Catchment_number)+corAR1(form=~Year),
+      family=binomial,data=AV_Migration_NAremoved2)
+glmer(Type_migration_continuous~Number_of_fish_species+(1|Catchment_number/River_name)+corAR1(form=~Year),
+      family=binomial,data=AV_Migration_NAremoved2)
+glmer(Type_migration_continuous~Number_of_fish_species+(1|River_name/Catchment_number),
+      family=binomial,data=AV_Migration_NAremoved2)
+
 M2 = list(
   lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
-      +GEdda+Lake+Type_migration_continuous*Number_of_fish_species,
+      +GEdda+Lake+Type_migration_continuous,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
   lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  glmer(Type_migration_continuous~Number_of_fish_species+Wetted_width+(1|River_name/Catchment_number),
+        family=binomial,data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2)
 sem.coefs(M2,AV_Migration_NAremoved2)
-sem.fit(M2,AV_Migration_NAremoved2, corr.errors = c("Distance_to_sea~~log_OringTOT","Year~~log_OringTOT"))
 sem.model.fits(M2)
+sem.plot(M2, AV_Migration_NAremoved2)
 
 # c)interaction migration type as continuous*depth or migration type as continuous*width : signif! 
 # In both cases: dist to sea and year not signif for öring but necessary for good model fit
@@ -944,23 +912,26 @@ sem.coefs(M2,AV_Migration_NAremoved2)
 sem.plot(M2, AV_Migration_NAremoved2)
 sem.model.fits(M2)
 
-# including link from depth or width to type of migration:
-M2 = list(
-  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
-      +GEdda+Lake+Type_migration_continuous,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
-  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
-sem.fit(M2,AV_Migration_NAremoved2)
-sem.coefs(M2,AV_Migration_NAremoved2)
-sem.model.fits(M2)
-sem.plot(M2, AV_Migration_NAremoved2)
-
-
 plot(AV_Migration_NAremoved2$Wetted_width,AV_Migration_NAremoved2$Type_migration_continuous)
 plot(AV_Migration_NAremoved2$Av_depth,AV_Migration_NAremoved2$Type_migration_continuous)
 cor.test(AV_Migration_NAremoved2$Wetted_width,AV_Migration_NAremoved2$Type_migration_continuous, method="spearman")
 cor.test(AV_Migration_NAremoved2$Av_depth,AV_Migration_NAremoved2$Type_migration_continuous, method="spearman")
+
+#### using a model from Migrants and one for Residents (coming from different subsets before averaging):
+# for migrant: Julian date is not sigfnif for both öring and LWD. Explained variance 0.10
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Slope_percent
+      +GEdda+Lake,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_migrants2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_migrants2))
+sem.fit(M2,AV_migrants2)
+sem.coefs(M2,AV_migrants2)
+sem.model.fits(M2)
+sem.plot(M2, AV_migrants2)
+
+
+# using fish spp as exogenous and binary ----------------------------------
 
 ### using fish spp as exogenous and binary: brecro have negative effects.Marginal R=10 and 11
 M2 = list(
@@ -977,8 +948,9 @@ sem.coefs(M2,AV2,standardize = "scale")
 sem.coefs(M2,AV2,standardize = "range")
 # lake and herr are not signif. LAx and cottus have a positive effects which does not seem correct
 # there is a negative relationship from gedda to LWD..if modeled as correlation, AIC decreases of ca 6 units 
+# with type of migration included: lake, gädda or becro are not significant any more
 
-
+# scripts for partial regression plots ------------------------------------
 
 #######partial correlation plots:
 #plot partial residuals plots:
@@ -1004,6 +976,10 @@ visreg(M1, "log_LWD")
 #or better layout:
 visreg(M1,"log_LWD",type="conditional",line=list(col="red"),points=list(cex=1, pch=16),xlab="Average_air_temperature")
 visreg(M1,"Average_air_temperature",type="contrast",line=list(col="red"),points=list(cex=1, pch=16),xlab="Average_air_temperature")
+
+
+# using fish spp as endogenous --------------------------------------------
+
 
 # using fish spp (inlcuding only predators: gedda and lake) as endogenous: logtranform them
 M2 = list(
@@ -1075,7 +1051,7 @@ sem.model.fits(M1)
 # using pike and lake as endogenous and binary:
 M2 = list(
   lme(log_OringTOT~Average_air_temperature+Distance_to_sea+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
-     ,
+      ,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
   lme(GEdda_KLASS~Wetted_width+log_LWD+Year+Slope_percent,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
@@ -1092,6 +1068,7 @@ sem.coefs(M2,AV2,standardize = "range")
 
 
 
+# on other datsets -------------------------------------------------------
 
 ########## on other datsets:
 # on AV: too many NAs, it fails
@@ -1139,3 +1116,107 @@ sem.model.fits(M2)
 sem.plot(M2, AVOC)
 
 
+
+ 
+# SEM Öring binary  ----------------------------------------------------------
+
+#BINARY
+# the best so far is:
+### SEM: on AV2 (no NAs) and binary:
+M2 = list(
+  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+Wetted_width+Year
+        +(1|Catchment_number/River_name),family=binomial,data=AV2),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width+Year,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV)
+# if I trasnform some predictors? boh..
+M2 = list(
+  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+log(Wetted_width)+log(Distance_to_sea)
+        +(1|Catchment_number/River_name),family=binomial,data=AV2),
+  lme(log(LWD+1)~Average_air_temperature+Av_depth+log(Wetted_width)+Year,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV)
+
+# other attempts, less succeful:
+# SEM: on AV and binary:(BUT no temp correlation for öring): run again
+M2 = list(
+  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+Wetted_width+Average_air_temperature+SUB1
+        +(1|Catchment_number/River_name),family=binomial,data=AV),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width+Year,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV))
+sem.fit(M2,AV)
+sem.coefs(M2,AV)
+sem.model.fits(M2)
+sem.plot(M2, AV)
+
+# SEM: on AVyear (averages of years) and binary:
+M2 = list(
+  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+Wetted_width+Average_air_temperature+SUB1
+        +(1|Catchment_number/River_name),family=binomial,data=AVyear),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width,
+      random=~1|River_name/Catchment_number, data=AVyear))
+sem.fit(M2,AVyear)
+#  remove NAs:
+AVyear2<-na.omit(AVyear)
+M2 = list(
+  glmer(OringTOT_KLASS~Av_depth+SUB1
+        +(1|Catchment_number/River_name),family=binomial,data=AVyear2),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width,
+      random=~1|River_name/Catchment_number, data=AVyear2))
+sem.fit(M2,AVyear2)
+sem.coefs(M2,AVyear2)
+sem.model.fits(AVyear2)
+sem.plot(M2, AVyear2)
+
+# only with 2009 values:
+M2 = list(
+  glmer(OringTOT_KLASS~log(LWD+1)+Av_depth+SUB1+ GEdda_KLASS
+        +(1|Catchment_number/River_name),family=binomial,data=AV2009),
+  lme(log(LWD+1)~Distance_to_sea+Average_air_temperature+Av_depth+Wetted_width,
+      random=~1|River_name/Catchment_number, data=AV2009))
+sem.fit(M2,AVyear)
+# remove NAs
+AV2009_2<-na.omit(AV2009)
+#  does not converge
+
+
+
+
+
+
+
+# SALMON ------------------------------------------------------------------
+
+M2 = list(
+  lme(log_LaxTOT~Average_air_temperature+Av_depth+Wetted_width+SUB1+Distance_to_sea*Julian_date+Year
+      +Type_migration_continuous,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Julian_date+Av_depth+Wetted_width+Year+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2)
+sem.fit(M2,AV_Migration_NAremoved2,corr.errors = c("Slope_percent~~log_LaxTOT"))
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.model.fits(M2)
+sem.plot(M2, AV_Migration_NAremoved2)
+
+# explore alternative (see ppt for list of alternatives that I have tried). When using fish spp (+ BEcrOTOT+ HarrTOT+
+# Cottus_spp+OringTOT,GEdda+Lake) as binary,BEcrOTOT_KLASS+ Cottus_spp_KLASS+OringTOT_KLASs seem to have a + effect
+# on salmon, does it make sense?
+# 
+M2 = list(
+  lme(log_LaxTOT~Average_air_temperature+Av_depth+Wetted_width+SUB1+Julian_date+Year
+      +Type_migration_continuous+BEcrOTOT_KLASS+ Cottus_spp_KLASS+OringTOT_KLASS,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Julian_date+Av_depth+Wetted_width+Year+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2)
+sem.fit(M2,AV_Migration_NAremoved2,corr.errors = c("OringTOT_KLASS~~log_LWD"))
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.model.fits(M2)
+sem.plot(M2, AV_Migration_NAremoved2)
