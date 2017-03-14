@@ -862,7 +862,8 @@ sem.fit(M2,AV_Migration_NAremoved2)
 sem.coefs(M2,AV_Migration_NAremoved2)
 sem.model.fits(M2)
 sem.plot(M2, AV_Migration_NAremoved2)
-
+sem.coefs(M2,AV_Migration_NAremoved2,standardize = "scale") 
+sem.coefs(M2,AV_Migration_NAremoved2,standardize = "range")
 
 # other options to deal with type of migration -----------------------------
 
@@ -1204,6 +1205,8 @@ sem.fit(M2,AV_Migration_NAremoved2,corr.errors = c("Slope_percent~~log_LaxTOT"))
 sem.coefs(M2,AV_Migration_NAremoved2)
 sem.model.fits(M2)
 sem.plot(M2, AV_Migration_NAremoved2)
+sem.coefs(M2,AV_Migration_NAremoved2,standardize = "scale") 
+sem.coefs(M2,AV_Migration_NAremoved2,standardize = "range")
 
 # explore alternative (see ppt for list of alternatives that I have tried). When using fish spp (+ BEcrOTOT+ HarrTOT+
 # Cottus_spp+OringTOT,GEdda+Lake) as binary,BEcrOTOT_KLASS+ Cottus_spp_KLASS+OringTOT_KLASs seem to have a + effect
@@ -1220,3 +1223,28 @@ sem.fit(M2,AV_Migration_NAremoved2,corr.errors = c("OringTOT_KLASS~~log_LWD"))
 sem.coefs(M2,AV_Migration_NAremoved2)
 sem.model.fits(M2)
 sem.plot(M2, AV_Migration_NAremoved2)
+
+
+
+# TROUT AND SALMON --------------------------------------------------------
+# using the so far best model for each spp 
+
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LaxTOT~Average_air_temperature+Av_depth+Wetted_width+SUB1+Distance_to_sea*Julian_date+Year
+      +Type_migration_continuous+log_LWD,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2)
+sem.fit(M2,AV_Migration_NAremoved2,corr.errors = c("Slope_percent~~log_LaxTOT", "GEdda~~log_LaxTOT",
+                                                   "Lake~~log_LaxTOT","log_OringTOT~~log_LaxTOT" ))
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.model.fits(M2)
+sem.plot(M2, AV_Migration_NAremoved2)
+sem.coefs(M2,AV_Migration_NAremoved2,standardize = "scale") 
+sem.coefs(M2,AV_Migration_NAremoved2,standardize = "range")
+
+
