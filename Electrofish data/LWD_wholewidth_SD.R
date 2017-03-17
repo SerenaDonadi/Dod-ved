@@ -820,6 +820,44 @@ summary(M2)
 # include interaction predators*LWD: not signif
 # include VIX? not for now, preliminary results not promising
 
+##### 1) BEST SO FAR: including migration type as continuous. 
+# I use dataset where I excluded NA for migration type at site level. When I add:
+# a)migration type: signif and positive. Explained variance 21 and 12%!
+# adding velocity:signif only for LWD not trout
+# the link julian date-LWD is signif only with unstardidized coeff. Therefore I won't try interaction 
+# date*depth/width or date*lat/altitude
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent+Velocity,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2)
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.model.fits(M2)
+sem.plot(M2, AV_Migration_NAremoved2)
+sem.coefs(M2,AV2,standardize = "scale") 
+sem.coefs(M2,AV2,standardize = "range")
+
+# 2) substitute altitude to dist to the sea: as dist to the sea, not signif on trout but signif on LWD. 
+# explained variance is 21% and 11% (before it was 21 and 12). as before, the link julian date-LWD is 
+# signif only with unstardidized coeff
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Altitude+Av_depth+Wetted_width+Year+Julian_date+Slope_percent+Velocity,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2)
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.model.fits(M2)
+sem.coefs(M2,AV2,standardize = "scale") 
+sem.coefs(M2,AV2,standardize = "range")
+
+
+
+
+# older models, without type of migration
 ### Final using fish spp as exogenous and continuous:
 # Lake and Gedda show negative relationships. marginal R2= 11 and 11
 M2 = list(
@@ -850,22 +888,6 @@ sem.coefs(M2,AV2,standardize = "range")
 # (slope, depth, width, temp): none of the possible conbination is signif
 # test effects of number fish spp on öring:  signif but has a positive effects! Skip it?
 
-
-##### BEST SO FAR: including migration type as continuous. 
-# I use dataset where I excluded NA for migration type at site level. When I add:
-# a)migration type: signif and positive. Explained variance 21-12%!
-M2 = list(
-  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
-      +GEdda+Lake+Type_migration_continuous,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
-  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
-sem.fit(M2,AV_Migration_NAremoved2)
-sem.coefs(M2,AV_Migration_NAremoved2)
-sem.model.fits(M2)
-sem.plot(M2, AV_Migration_NAremoved2)
-sem.coefs(M2,AV_Migration_NAremoved2,standardize = "scale") 
-sem.coefs(M2,AV_Migration_NAremoved2,standardize = "range")
 
 # SALMON ------------------------------------------------------------------
 
@@ -908,7 +930,28 @@ sem.plot(M2, AV_Migration_NAremoved2)
 # explained variation for salmon although 10 for LWD inatead of 11.
 # (with both altitude and dits to the sea: nope collinear with temperature and distance to sea, according to vif.)
 # cor.test(AV2$Distance_to_sea, AV2$Altitude)
-# 3)interaction julian date and altitud (better than temp): explained variation: 7% and 11%
+
+M2 = list(
+  lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date+Altitude+Year+Velocity,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Altitude,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV2)
+sem.coefs(M2,AV2,standardize = "scale") 
+sem.coefs(M2,AV2,standardize = "range") # gives problm with temp correlation. If I delete it: it works
+M2 = list(
+  lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date+Altitude+Year+Velocity,
+      random=~1|River_name/Catchment_number,data=AV2),
+  lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Altitude,
+      random=~1|River_name/Catchment_number,data=AV2))
+sem.coefs(M2,AV2,standardize = "range")
+
+# 3)with interaction julian date and altitud (better than temp): explained variation: 7% and 11% but the model is 
+# completely identified so it does not work. Try again after including the type of forest. see below interpreation
+#of the interaction
 
 M2 = list(
   lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date*Altitude+Year+Velocity,
@@ -916,11 +959,10 @@ M2 = list(
   lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Julian_date*Altitude,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
 sem.fit(M2,AV2)
+sem.fit(M2,AV2,corr.errors = c("log_LaxTOT~~log_LWD","Average_air_temperature~~log_LaxTOT","Slope_percent~~log_LaxTOT"))
 sem.coefs(M2,AV2)
 sem.model.fits(M2)
 sem.plot(M2, AV2)
-sem.coefs(M2,AV2,standardize = "scale") 
-sem.coefs(M2,AV2,standardize = "range")
 
 #what does the interaction mean?
 # for LWD
@@ -935,20 +977,22 @@ visreg2d(M3,x="Altitude",y="Julian_date",plot.type="image")
 visreg2d(M3,x="Julian_date",y="Altitude",type="conditional",plot.type="image")
 # visreg2d(M3,x="Julian_date",y="Altitude",type="contrast",plot.type="image") not working
 
-# wood slightly decrease with julian date below 100 m but there are already high values at lower altitudes,
-# and it increase sensibly with date at higher latitude (above 100m). is this due to the sites at different
-# altitude being sampled at a differnt time of the year? CHECK: more sites are sampled at lower altitudes, and more in the summer (julian date 220-260)
-
-# other pdv:wood decrease with altitude and more so for low values of Julian date (180-220 is July) 
-
+# best interpretation: wood decrease with altitudes and the negative effect of altitude on LWD weaken over the season,
+# (and disappear later in the season, ca at the end of October - but there are few points at the extreme of the range 
+# so would not trust the graph too much)
 plot(AV2$Julian_date,AV2$Altitude)
+cor.test(AV2$Julian_date,AV2$Altitude)
+# weak negative correlation between altitude and julian date indicates that sites at higher altitude may have been 
+# sampled a bit earlier than sites at lower altitudes. which does not explain the negative main effect of julian date
+# on wood. So the sampling is fine.
+
 
 
 # and using the same model on AV_Migration_NAremoved2 ((NAs for migration type excluded at the beginning) as dataset?
 # explained variation still 7 and 11, so no use
 
 
-# TROUT AND SALMON --------------------------------------------------------
+# TROUT AND SALMON (old, need to be revised) --------------------------------------------------------
 
 #BEST:withouth interaction julian date*distance to the sea, which is barely signif:
 # using log Gedda and log Lake:
@@ -1035,6 +1079,22 @@ str(AV_Migration_NAremoved2$Distance_to_sea)
 
 
 
+
+
+
+
+# COTTUS ------------------------------------------------------------------
+M2 = list(
+  lme(log_Cottus_spp~Average_air_temperature+Av_depth+Slope_percent+Altitude,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Average_air_temperature+Altitude+Av_depth+Wetted_width+Year+Slope_percent+Velocity,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV2)
+sem.coefs(M2,AV2,standardize = "scale") 
+sem.coefs(M2,AV2,standardize = "range")
 
 
 # other options to deal with type of migration -----------------------------
