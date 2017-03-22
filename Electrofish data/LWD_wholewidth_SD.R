@@ -1,7 +1,7 @@
 rm(list=ls())
-setwd("C:/Users/sedi0002/Google Drive/Dod ved/Electrofish data")
-setwd("C:/Users/serena/Google Drive/Dod ved/Electrofish data")
-my<-read.table("LWD_wholewidth_SD6.txt",header=T)
+setwd("C:/Users/sedi0002/Google Drive/Solab/Dod ved/Electrofish data")
+setwd("C:/Users/serena/Google Drive/Solab/Dod ved/Electrofish data")
+my<-read.table("LWD_wholewidth_SD7.txt",header=T)
 
 head(my)
 str(my)
@@ -133,14 +133,14 @@ AV_Migration_NAremoved<-aggregate(cbind(my_Migration_NAremoved$Altitude,my_Migra
                     ,my_Migration_NAremoved$Site_area,my_Migration_NAremoved$Maxdepth,my_Migration_NAremoved$Av_depth,my_Migration_NAremoved$Water_temperature,my_Migration_NAremoved$Average_air_temperature
                     ,my_Migration_NAremoved$SUB1,my_Migration_NAremoved$Site_habitat_index,my_Migration_NAremoved$Velocity,my_Migration_NAremoved$Slope_percent,my_Migration_NAremoved$Distance_to_sea,my_Migration_NAremoved$Month,my_Migration_NAremoved$Julian_date,my_Migration_NAremoved$Typ_of_migration_numerical
                     ,my_Migration_NAremoved$Abbor,my_Migration_NAremoved$BEcrOTOT,my_Migration_NAremoved$Elrit,my_Migration_NAremoved$GEdda,my_Migration_NAremoved$HarrTOT,my_Migration_NAremoved$Lake,my_Migration_NAremoved$LaxFIXTO,my_Migration_NAremoved$LaxOrtot,my_Migration_NAremoved$LaxTOT,my_Migration_NAremoved$Eel,my_Migration_NAremoved$MOrt,my_Migration_NAremoved$OringTOT
-                    ,my_Migration_NAremoved$RegnbTOT,my_Migration_NAremoved$ROdinTOT,my_Migration_NAremoved$Cottus_spp,my_Migration_NAremoved$Lampetra,my_Migration_NAremoved$Sticklebacks,my_Migration_NAremoved$VIX,my_Migration_NAremoved$VIX_klass,my_Migration_NAremoved$Number_of_fish_species
-),list(my_Migration_NAremoved$River_name,my_Migration_NAremoved$Catchment_number,my_Migration_NAremoved$Year),mean)
+                    ,my_Migration_NAremoved$RegnbTOT,my_Migration_NAremoved$ROdinTOT,my_Migration_NAremoved$Cottus_spp,my_Migration_NAremoved$Lampetra,my_Migration_NAremoved$Sticklebacks,my_Migration_NAremoved$VIX,my_Migration_NAremoved$VIX_klass,my_Migration_NAremoved$Number_of_fish_species,
+                    my_Migration_NAremoved$AreaForest, my_Migration_NAremoved$TotVol, my_Migration_NAremoved$MeanAge),list(my_Migration_NAremoved$River_name,my_Migration_NAremoved$Catchment_number,my_Migration_NAremoved$Year),mean)
 names(AV_Migration_NAremoved)<-c("River_name", "Catchment_number","Year", 
              "Altitude","Lat","Long","LWD","exaktarea","Wetted_width","Site_length","Site_area",
              "Maxdepth","Av_depth","Water_temperature","Average_air_temperature","SUB1","Site_habitat_index",
              "Velocity","Slope_percent","Distance_to_sea","Month","Julian_date","Type_migration_continuous","Abbor","BEcrOTOT","Elrit","GEdda",
              "HarrTOT","Lake","LaxFIXTO","LaxOrtot","LaxTOT","Eel","MOrt","OringTOT","RegnbTOT","ROdinTOT","Cottus_spp",
-             "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species")
+             "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species","Forest_coverage","Forest_volume","Forest_age")
 
 
 # Subset for only migrating or resident -----------------------------------
@@ -412,7 +412,7 @@ M2<-lme(OringTOT~LWD,random=~1|River_name, corAR1(form=~Year), data=AV) #nope
 # by looking at correlation between residuals of the model coming from each time serie
 
 
-# explore collinearity of predictors ------------------------------------
+# explore collinearity of predictors, PCA environment ------------------------------------
 
 #take dataframe with only environmental data and calculate model:
 pgd<-AV[,4:22] # or pgd<-AV[,3:22] to include year but it does not explain much (actually tot explained variation declines)
@@ -506,6 +506,23 @@ M1<-lm(log(OringTOT+1)~GEdda+Lampetra+Sticklebacks+LaxTOT+Abbor+BEcrOTOT+Elrit+H
          MOrt+RegnbTOT+ROdinTOT+Cottus_spp, data=AV2)
 vif(M1)
 #better to run a PCA..But there are no obvious correlation
+
+
+# forest data:
+plot(AV_Migration_NAremoved2$Forest_coverage,AV_Migration_NAremoved2$Forest_volume)
+plot(AV_Migration_NAremoved2$Forest_coverage,AV_Migration_NAremoved2$Forest_age)
+plot(AV_Migration_NAremoved2$Forest_volume,AV_Migration_NAremoved2$Forest_age)
+
+M1<-lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent+
+          Velocity+Forest_coverage+Forest_age,
+    random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2)
+M1<-lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent+
+          Velocity+Forest_volume+Forest_age,
+        random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2)
+vif(M1)
+vif(M1)
+
+# use either age and coverage or age and volume
 
 # PCA with fish data ------------------------------------------------------
 
@@ -808,9 +825,7 @@ summary(M2)
 
 # SEM Öring CONTINUOUS ----------------------------------------------------
 
-# on AV2 (whole dataset without NAs)
-
-# when trying different predictors:
+# when trying different predictors (on AV2, but probably not different when using AV_Migration_NAremoved2):
 # 1)Climatic factors: avg air temp OR lat are the best
 # 3)Stream size: exact area is signif?NO. better avg or max depth?
 # 4) inlcude all local features: velocity for LWD:no. Slope_percent for LWD:link to Öring is also suggested,
@@ -820,7 +835,28 @@ summary(M2)
 # include interaction predators*LWD: not signif
 # include VIX? not for now, preliminary results not promising
 
-##### 1) BEST SO FAR: including migration type as continuous. 
+#### including forest data:When include forest age and forest cover: link julian date->LWD disappears. Need a correlation
+#error between trout and forest age. Explained variation: 20 and 14%. If I instead include forest age and volume, link 
+#LWD-julian date disappears again but now I need two correlation errors: between trout and forest age and between trout
+#and forest volume. Explained variation: 20 and 13%.
+
+#BEST with forest data (and correlated error)
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Slope_percent+Velocity+
+        Forest_age+Forest_coverage,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2)
+sem.fit(M2,AV_Migration_NAremoved2,corr.errors = c("log_OringTOT~~Forest_age"))
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.model.fits(M2)
+sem.plot(M2, AV_Migration_NAremoved2)
+sem.coefs(M2,AV_Migration_NAremoved2,standardize = "scale") 
+sem.coefs(M2,AV_Migration_NAremoved2,standardize = "range")
+
+##### 1) BEST without forest data but still including migration type as continuous. 
 # I use dataset where I excluded NA for migration type at site level. When I add:
 # a)migration type: signif and positive. Explained variance 21 and 12%!
 # adding velocity:signif only for LWD not trout
@@ -855,9 +891,7 @@ sem.coefs(M2,AV2,standardize = "scale")
 sem.coefs(M2,AV2,standardize = "range")
 
 
-
-
-# older models, without type of migration
+# older models, without type of migration, therefore on AV2:
 ### Final using fish spp as exogenous and continuous:
 # Lake and Gedda show negative relationships. marginal R2= 11 and 11
 M2 = list(
