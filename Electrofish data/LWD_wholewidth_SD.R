@@ -83,7 +83,11 @@ ggplot(my1, aes(x = Year, y = LWD)) +
 ggplot(my1, aes(x = Year, y = OringTOT)) +
   geom_point(aes(colour = River_name), size = 2)
 
-
+AV3<-AV2[1:100,]
+ggplot(AV3, aes(x = Catchment_number, y = Forest_coverage)) +
+  geom_point(aes(colour = River_name), size = 2)
+ggplot(my1, aes(x = Year, y = OringTOT)) +
+  geom_point(aes(colour = River_name), size = 2)
 
 # Extracting averages per river and year without removing NAs -----------------------------------
 ### extract means per river and year: you can not do it for factors (nor binary variables)
@@ -94,14 +98,14 @@ AV<-aggregate(cbind(my$Altitude,my$ddlat,my$ddlong,my$LWD,my$exaktarea,my$Wetted
                     ,my$Site_area,my$Maxdepth,my$Av_depth,my$Water_temperature,my$Average_air_temperature
                     ,my$SUB1,my$Site_habitat_index,my$Velocity,my$Slope_percent,my$Distance_to_sea,my$Month,my$Julian_date,my$Typ_of_migration_numerical
                     ,my$Abbor,my$BEcrOTOT,my$Elrit,my$GEdda,my$HarrTOT,my$Lake,my$LaxFIXTO,my$LaxOrtot,my$LaxTOT,my$Eel,my$MOrt,my$OringTOT
-                    ,my$RegnbTOT,my$ROdinTOT,my$Cottus_spp,my$Lampetra,my$Sticklebacks,my$VIX,my$VIX_klass,my$Number_of_fish_species
-                    ),list(my$River_name,my$Catchment_number,my$Year),mean)
+                    ,my$RegnbTOT,my$ROdinTOT,my$Cottus_spp,my$Lampetra,my$Sticklebacks,my$VIX,my$VIX_klass,my$Number_of_fish_species,
+                    my$AreaForest, my$TotVol, my$MeanAge),list(my$River_name,my$Catchment_number,my$Year),mean)
 names(AV)<-c("River_name", "Catchment_number","Year", 
              "Altitude","Lat","Long","LWD","exaktarea","Wetted_width","Site_length","Site_area",
              "Maxdepth","Av_depth","Water_temperature","Average_air_temperature","SUB1","Site_habitat_index",
              "Velocity","Slope_percent","Distance_to_sea","Month","Julian_date","Type_migration_continuous","Abbor","BEcrOTOT","Elrit","GEdda",
              "HarrTOT","Lake","LaxFIXTO","LaxOrtot","LaxTOT","Eel","MOrt","OringTOT","RegnbTOT","ROdinTOT","Cottus_spp",
-             "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species")
+             "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species","Forest_coverage","Forest_volume","Forest_age")
 head(AV)
 
 #check what happens to NAs
@@ -220,7 +224,7 @@ DeerEcervi$Ecervi.01[DeerEcervi$Ecervi >0 ] <- 1
 
 
 
-# Subsets of data ---------------------------------------------------------
+# Subsets of data, removing NAs after taking averages ---------------------------------------------------------
 
 # remove NAs from full dataset
 AV2<-na.omit(AV)
@@ -520,9 +524,41 @@ M1<-lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Ye
           Velocity+Forest_volume+Forest_age,
         random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2)
 vif(M1)
-vif(M1)
-
 # use either age and coverage or age and volume
+
+#variation of forest data on different spatial scales:
+plot(AV_Migration_NAremoved2$Forest_coverage~AV_Migration_NAremoved2$Lat)
+plot(AV_Migration_NAremoved2$Forest_coverage~AV_Migration_NAremoved2$Average_air_temperature)
+
+avg<-tapply(AV_Migration_NAremoved2$Forest_coverage,list(AV_Migration_NAremoved2$River_name),mean)
+avg
+sdpl<-tapply(AV_Migration_NAremoved2$Forest_coverage,list(AV_Migration_NAremoved2$River_name),sd)
+sdpl
+summary(sdpl) # range: 0-70
+
+avg<-tapply(AV_Migration_NAremoved2$Forest_coverage,list(AV_Migration_NAremoved2$Catchment_number),mean)
+avg
+sdpl<-tapply(AV_Migration_NAremoved2$Forest_coverage,list(AV_Migration_NAremoved2$Catchment_number),sd)
+sdpl
+summary(sdpl)# range: 0-53
+
+mean(AV_Migration_NAremoved2$Forest_coverage)
+sd(AV_Migration_NAremoved2$Forest_coverage) # 40
+
+avg<-tapply(AV_Migration_NAremoved2$Forest_age,list(AV_Migration_NAremoved2$River_name),mean)
+avg
+sdpl<-tapply(AV_Migration_NAremoved2$Forest_age,list(AV_Migration_NAremoved2$River_name),sd)
+sdpl
+summary(sdpl) # range: 0-51
+
+avg<-tapply(AV_Migration_NAremoved2$Forest_age,list(AV_Migration_NAremoved2$Catchment_number),mean)
+avg
+sdpl<-tapply(AV_Migration_NAremoved2$Forest_age,list(AV_Migration_NAremoved2$Catchment_number),sd)
+sdpl
+summary(sdpl)# range: 0-28
+
+mean(AV_Migration_NAremoved2$Forest_age)
+sd(AV_Migration_NAremoved2$Forest_age) # 14
 
 # PCA with fish data ------------------------------------------------------
 
@@ -840,7 +876,23 @@ summary(M2)
 #LWD-julian date disappears again but now I need two correlation errors: between trout and forest age and between trout
 #and forest volume. Explained variation: 20 and 13%.
 
-#BEST with forest data (and correlated error)
+# 1a) BEST with forest data (and correlated error)
+##with altitude instead of distance to the sea:
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Altitude+Av_depth+Wetted_width+Year+Slope_percent+Velocity+
+        Forest_age+Forest_coverage,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2)
+sem.fit(M2,AV_Migration_NAremoved2,corr.errors = c("log_OringTOT~~Forest_age"))
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.model.fits(M2)
+sem.plot(M2, AV_Migration_NAremoved2)
+sem.coefs(M2,AV_Migration_NAremoved2,standardize = "scale") 
+sem.coefs(M2,AV_Migration_NAremoved2,standardize = "range")
+# or with dist to sea instead of altitude:
 M2 = list(
   lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
       +GEdda+Lake+Type_migration_continuous,
@@ -856,7 +908,83 @@ sem.plot(M2, AV_Migration_NAremoved2)
 sem.coefs(M2,AV_Migration_NAremoved2,standardize = "scale") 
 sem.coefs(M2,AV_Migration_NAremoved2,standardize = "range")
 
-##### 1) BEST without forest data but still including migration type as continuous. 
+# any threshold in LWD?
+partial.resid(.formula = log_OringTOT ~ log_LWD, M2, AV_Migration_NAremoved2)
+part.res<-partial.resid(.formula = log_OringTOT ~ log_LWD, M2, AV_Migration_NAremoved2)
+head(part.res)
+resid.LWD.x<-part.res$x.resids
+resid.trout.y<-part.res$y.resids
+# from https://www.r-bloggers.com/r-for-ecologists-putting-together-a-piecewise-regression/
+#METHOD 1: ITERATIVE SEARCHING
+breaks <- resid.LWD.x[which(resid.LWD.x >= -1.5 & resid.LWD.x <= 2)]
+mse <- numeric(length(breaks))
+for(i in 1:length(breaks)){
+  piecewise1 <- lm(resid.trout.y ~ resid.LWD.x*(resid.LWD.x < breaks[i]) + resid.LWD.x*(resid.LWD.x>=breaks[i]))
+  mse[i] <- summary(piecewise1)[6]
+}
+mse <- as.numeric(mse)
+breaks[which(mse==min(mse))]
+# depending on the interval that I chose at the beginning:
+piecewise2 <- lm(resid.trout.y ~ resid.LWD.x*(resid.LWD.x < -0.9964507) + resid.LWD.x*(resid.LWD.x > -0.9964507))
+summary(piecewise2)
+piecewise2 <- lm(resid.trout.y ~ resid.LWD.x*(resid.LWD.x < -1.02578) + resid.LWD.x*(resid.LWD.x > -1.02578))
+summary(piecewise2)
+# check how to plot and interpret summary on the website
+
+#METHOD 2: USE 'SEGMENTED' PACKAGE
+library(segmented)
+lin.mod <- lm(resid.trout.y~resid.LWD.x)
+segmented.mod <- segmented(lin.mod, seg.Z = ~resid.LWD.x, psi=-1)
+summary(segmented.mod) #-0.84
+segmented.mod <- segmented(lin.mod, seg.Z = ~resid.LWD.x, psi=-1.5)
+summary(segmented.mod) #-0.85
+slope(segmented.mod)
+#plot
+plot(resid.LWD.x,resid.trout.y, pch=1)
+plot(segmented.mod, add=T)
+
+# ok, what is the correpsonding value in LWD unit?
+AV_Migration_NAremoved2$resid.LWD.x.attached<-resid.LWD.x
+plot(AV_Migration_NAremoved2$log_LWD~AV_Migration_NAremoved2$resid.LWD.x.attached)
+head(AV_Migration_NAremoved2$resid.LWD.x.attached)
+
+newdata <- AV_Migration_NAremoved2[ which(AV_Migration_NAremoved2$resid.LWD.x.attached < -0.8 
+                         & AV_Migration_NAremoved2$resid.LWD.x.attached > -0.9), ]
+
+mean(newdata$resid.LWD.x.attached)
+mean(newdata$log_LWD)
+#convert to LWD number:
+2.71828^1.185124+1 
+
+
+
+# continue!!!!
+
+#forest data as endogenous? nope, too may factors are missing 
+M1<-lme(Forest_coverage~Average_air_temperature+Distance_to_sea+Year+Forest_age,
+        random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2)
+summary(M1)
+
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Altitude+Av_depth+Wetted_width+Year+Slope_percent+Velocity+
+        Forest_age+Forest_coverage,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  M1<-lme(Forest_coverage~Average_air_temperature+Altitude+Year+Forest_age,
+          random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2)
+sem.fit(M2,AV_Migration_NAremoved2,corr.errors = c("log_OringTOT~~Forest_age"))
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.model.fits(M2)
+
+plot(AV_Migration_NAremoved2$Wetted_width~AV_Migration_NAremoved2$Average_air_temperature)
+plot(AV_Migration_NAremoved2$Wetted_width~AV_Migration_NAremoved2$Altitude)
+plot(AV_Migration_NAremoved2$Slope_percent~AV_Migration_NAremoved2$Average_air_temperature)
+plot(AV_Migration_NAremoved2$Slope_percent~AV_Migration_NAremoved2$Altitude)
+
+##### 1b) BEST without forest data but still including migration type as continuous. 
 # I use dataset where I excluded NA for migration type at site level. When I add:
 # a)migration type: signif and positive. Explained variance 21 and 12%!
 # adding velocity:signif only for LWD not trout
@@ -925,6 +1053,99 @@ sem.coefs(M2,AV2,standardize = "range")
 
 # SALMON ------------------------------------------------------------------
 
+############# exclude type of migration - I use AV2 (NAs for migration type included)
+
+# BEST including forest data (with altitude):
+M2 = list(
+  lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date+Altitude+Year+Velocity,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Altitude+Forest_age+Forest_coverage,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.fit(M2,AV2,corr.errors = c("log_LaxTOT~~Forest_age","Forest_coverage~~log_LaxTOT"))
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV2)
+sem.coefs(M2,AV2,standardize = "scale") 
+sem.coefs(M2,AV2,standardize = "range") # gives problm with temp correlation. If I delete it: it works
+M2 = list(
+  lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date+Altitude+Year+Velocity,
+      random=~1|River_name/Catchment_number,data=AV2),
+  lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Altitude+Forest_age+Forest_coverage,
+      random=~1|River_name/Catchment_number,data=AV2))
+sem.coefs(M2,AV2,standardize = "range")
+# explained variation: 6 and 13%
+
+# if I include forest age and volume: same as eabove, I need two correlated errors, and explained variance is lower: 6 and 12
+# including forest data with dist to sea instead of altitude:air temp is signif on lax but  explained variation: 5 and 14%
+
+# BEST without forest data:
+# 1) if inlcude velocity (vif with slope is fine): substrate is not signif for salmon but velocity is. 
+# And both velocity and slope affect (+) wood. explained variation does not change, but good for interpetation
+# 2) if substitute altitude to dist to sea: air temp is not signif any more for salmon (ok!). and we get to 6% 
+# explained variation for salmon although 10 for LWD inatead of 11.
+# (with both altitude and dits to the sea: nope collinear with temperature and distance to sea, according to vif.)
+# cor.test(AV2$Distance_to_sea, AV2$Altitude)
+
+M2 = list(
+  lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date+Altitude+Year+Velocity,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Altitude,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV2)
+sem.coefs(M2,AV2,standardize = "scale") 
+sem.coefs(M2,AV2,standardize = "range") # gives problm with temp correlation. If I delete it: it works
+M2 = list(
+  lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date+Altitude+Year+Velocity,
+      random=~1|River_name/Catchment_number,data=AV2),
+  lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Altitude,
+      random=~1|River_name/Catchment_number,data=AV2))
+sem.coefs(M2,AV2,standardize = "range")
+
+# 3)with interaction julian date and altitud (better than temp): explained variation: 7% and 14% but the model is 
+# completely identified so it does not work. I would not use it! see below interpreation
+#of the interaction
+
+M2 = list(
+  lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date*Altitude+Year+Velocity,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
+  lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Julian_date*Altitude+Forest_age+Forest_coverage,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
+sem.fit(M2,AV2)
+sem.fit(M2,AV2,corr.errors = c("log_LaxTOT~~log_LWD","Average_air_temperature~~log_LaxTOT","Slope_percent~~log_LaxTOT"))
+sem.coefs(M2,AV2)
+sem.model.fits(M2)
+sem.plot(M2, AV2)
+
+#what does the interaction mean?
+# for LWD
+M3<-lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Julian_date*Altitude,
+    random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2)
+visreg2d(M3,x="Altitude",y="Julian_date",plot.type="image")
+visreg2d(M3,x="Julian_date",y="Altitude",type="conditional",plot.type="image")
+# for salmon:
+M3<-lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date*Altitude+Year+Velocity,
+        random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2)
+visreg2d(M3,x="Altitude",y="Julian_date",plot.type="image")
+visreg2d(M3,x="Julian_date",y="Altitude",type="conditional",plot.type="image")
+
+# best interpretation: wood decrease with altitudes and the negative effect of altitude on LWD weaken over the season,
+# (and disappear later in the season, ca at the end of October - but there are few points at the extreme of the range 
+# so would not trust the graph too much)
+plot(AV2$Julian_date,AV2$Altitude)
+cor.test(AV2$Julian_date,AV2$Altitude)
+# weak negative correlation between altitude and julian date indicates that sites at higher altitude may have been 
+# sampled a bit earlier than sites at lower altitudes. which does not explain the negative main effect of julian date
+# on wood. So the sampling is fine.
+
+
+# and using the same model on AV_Migration_NAremoved2 ((NAs for migration type excluded at the beginning) as dataset?
+# explained variation still 7 and 11, so no use
+
+## old - when using AV_Migration_NAremoved2
 M2 = list(
   lme(log_LaxTOT~Average_air_temperature+Av_depth+Wetted_width+SUB1+Distance_to_sea*Julian_date+Year
       +Type_migration_continuous,
@@ -955,75 +1176,89 @@ sem.coefs(M2,AV_Migration_NAremoved2)
 sem.model.fits(M2)
 sem.plot(M2, AV_Migration_NAremoved2)
 
-
-############# exclude type of migration - I use AV2 (NAs for migration type included)
-# BEST:
-# 1) if inlcude velocity (vif with slope is fine): substrate is not signif for salmon but velocity is. 
-# And both velocity and slope affect (+) wood. explained variation does not change, but good for interpetation
-# 2) if substitute altitude to dist to sea: air temp is not signif any more for salmon (ok!). and we get to 6% 
-# explained variation for salmon although 10 for LWD inatead of 11.
-# (with both altitude and dits to the sea: nope collinear with temperature and distance to sea, according to vif.)
-# cor.test(AV2$Distance_to_sea, AV2$Altitude)
-
+# COTTUS ------------------------------------------------------------------
 M2 = list(
-  lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date+Altitude+Year+Velocity,
+  lme(log_Cottus_spp~Average_air_temperature+Av_depth+Slope_percent+Altitude,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
-  lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Altitude,
+  lme(log_LWD~Average_air_temperature+Altitude+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Forest_age+Forest_coverage,
       random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
 sem.fit(M2,AV2)
 sem.coefs(M2,AV2)
 sem.model.fits(M2)
 sem.plot(M2, AV2)
 sem.coefs(M2,AV2,standardize = "scale") 
-sem.coefs(M2,AV2,standardize = "range") # gives problm with temp correlation. If I delete it: it works
-M2 = list(
-  lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date+Altitude+Year+Velocity,
-      random=~1|River_name/Catchment_number,data=AV2),
-  lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Altitude,
-      random=~1|River_name/Catchment_number,data=AV2))
 sem.coefs(M2,AV2,standardize = "range")
 
-# 3)with interaction julian date and altitud (better than temp): explained variation: 7% and 11% but the model is 
-# completely identified so it does not work. Try again after including the type of forest. see below interpreation
-#of the interaction
+#No interaction temp*Gedda
+#Gedda not signif, and Lake shows instead a positive link which I therefore ignore - bottom up?
+
+
+
+# other options to deal with type of migration -----------------------------
+
+#b) n. of spp determining migration type that in turn influences öring?too complex model, often does not converge
+hist(AV_Migration_NAremoved2$Type_migration_continuous)
+glmer(Type_migration_continuous~Number_of_fish_species+(1|River_name/Catchment_number)+corAR1(form=~Year),
+      family=binomial,data=AV_Migration_NAremoved2)
+glmer(Type_migration_continuous~Number_of_fish_species+(1|Catchment_number/River_name)+corAR1(form=~Year),
+      family=binomial,data=AV_Migration_NAremoved2)
+glmer(Type_migration_continuous~Number_of_fish_species+(1|River_name/Catchment_number),
+      family=binomial,data=AV_Migration_NAremoved2)
 
 M2 = list(
-  lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date*Altitude+Year+Velocity,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
-  lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Julian_date*Altitude,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
-sem.fit(M2,AV2)
-sem.fit(M2,AV2,corr.errors = c("log_LaxTOT~~log_LWD","Average_air_temperature~~log_LaxTOT","Slope_percent~~log_LaxTOT"))
-sem.coefs(M2,AV2)
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  glmer(Type_migration_continuous~Number_of_fish_species+Wetted_width+(1|River_name/Catchment_number),
+        family=binomial,data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2)
+sem.coefs(M2,AV_Migration_NAremoved2)
 sem.model.fits(M2)
-sem.plot(M2, AV2)
+sem.plot(M2, AV_Migration_NAremoved2)
 
-#what does the interaction mean?
-# for LWD
-M3<-lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Julian_date*Altitude,
-    random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2)
-visreg2d(M3,x="Altitude",y="Julian_date",plot.type="image")
-visreg2d(M3,x="Julian_date",y="Altitude",type="conditional",plot.type="image")
-# for salmon:
-M3<-lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date*Altitude+Year+Velocity,
-        random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2)
-visreg2d(M3,x="Altitude",y="Julian_date",plot.type="image")
-visreg2d(M3,x="Julian_date",y="Altitude",type="conditional",plot.type="image")
-# visreg2d(M3,x="Julian_date",y="Altitude",type="contrast",plot.type="image") not working
+# c)interaction migration type as continuous*depth or migration type as continuous*width : signif! 
+# In both cases: dist to sea and year not signif for öring but necessary for good model fit
+# deleting link but using correlation:
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous*Av_depth,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2, corr.errors = c("Distance_to_sea~~log_OringTOT","Year~~log_OringTOT"))
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.model.fits(M2)
 
-# best interpretation: wood decrease with altitudes and the negative effect of altitude on LWD weaken over the season,
-# (and disappear later in the season, ca at the end of October - but there are few points at the extreme of the range 
-# so would not trust the graph too much)
-plot(AV2$Julian_date,AV2$Altitude)
-cor.test(AV2$Julian_date,AV2$Altitude)
-# weak negative correlation between altitude and julian date indicates that sites at higher altitude may have been 
-# sampled a bit earlier than sites at lower altitudes. which does not explain the negative main effect of julian date
-# on wood. So the sampling is fine.
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
+      +GEdda+Lake+Type_migration_continuous*Wetted_width,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
+sem.fit(M2,AV_Migration_NAremoved2, corr.errors = c("Distance_to_sea~~log_OringTOT","Year~~log_OringTOT"))
+sem.coefs(M2,AV_Migration_NAremoved2)
+sem.plot(M2, AV_Migration_NAremoved2)
+sem.model.fits(M2)
 
+plot(AV_Migration_NAremoved2$Wetted_width,AV_Migration_NAremoved2$Type_migration_continuous)
+plot(AV_Migration_NAremoved2$Av_depth,AV_Migration_NAremoved2$Type_migration_continuous)
+cor.test(AV_Migration_NAremoved2$Wetted_width,AV_Migration_NAremoved2$Type_migration_continuous, method="spearman")
+cor.test(AV_Migration_NAremoved2$Av_depth,AV_Migration_NAremoved2$Type_migration_continuous, method="spearman")
 
-
-# and using the same model on AV_Migration_NAremoved2 ((NAs for migration type excluded at the beginning) as dataset?
-# explained variation still 7 and 11, so no use
+#### using a model from Migrants and one for Residents (coming from different subsets before averaging):
+# for migrant: Julian date is not sigfnif for both öring and LWD. Explained variance 0.10
+M2 = list(
+  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Slope_percent
+      +GEdda+Lake,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_migrants2),
+  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Slope_percent,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_migrants2))
+sem.fit(M2,AV_migrants2)
+sem.coefs(M2,AV_migrants2)
+sem.model.fits(M2)
+sem.plot(M2, AV_migrants2)
 
 
 # TROUT AND SALMON (old, need to be revised) --------------------------------------------------------
@@ -1115,87 +1350,6 @@ str(AV_Migration_NAremoved2$Distance_to_sea)
 
 
 
-
-
-# COTTUS ------------------------------------------------------------------
-M2 = list(
-  lme(log_Cottus_spp~Average_air_temperature+Av_depth+Slope_percent+Altitude,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2),
-  lme(log_LWD~Average_air_temperature+Altitude+Av_depth+Wetted_width+Year+Slope_percent+Velocity,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV2))
-sem.fit(M2,AV2)
-sem.coefs(M2,AV2)
-sem.model.fits(M2)
-sem.plot(M2, AV2)
-sem.coefs(M2,AV2,standardize = "scale") 
-sem.coefs(M2,AV2,standardize = "range")
-
-
-# other options to deal with type of migration -----------------------------
-
-#b) n. of spp determining migration type that in turn influences öring?too complex model, often does not converge
-hist(AV_Migration_NAremoved2$Type_migration_continuous)
-glmer(Type_migration_continuous~Number_of_fish_species+(1|River_name/Catchment_number)+corAR1(form=~Year),
-      family=binomial,data=AV_Migration_NAremoved2)
-glmer(Type_migration_continuous~Number_of_fish_species+(1|Catchment_number/River_name)+corAR1(form=~Year),
-      family=binomial,data=AV_Migration_NAremoved2)
-glmer(Type_migration_continuous~Number_of_fish_species+(1|River_name/Catchment_number),
-      family=binomial,data=AV_Migration_NAremoved2)
-
-M2 = list(
-  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
-      +GEdda+Lake+Type_migration_continuous,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
-  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
-  glmer(Type_migration_continuous~Number_of_fish_species+Wetted_width+(1|River_name/Catchment_number),
-        family=binomial,data=AV_Migration_NAremoved2))
-sem.fit(M2,AV_Migration_NAremoved2)
-sem.coefs(M2,AV_Migration_NAremoved2)
-sem.model.fits(M2)
-sem.plot(M2, AV_Migration_NAremoved2)
-
-# c)interaction migration type as continuous*depth or migration type as continuous*width : signif! 
-# In both cases: dist to sea and year not signif for öring but necessary for good model fit
-# deleting link but using correlation:
-M2 = list(
-  lme(log_OringTOT~Average_air_temperature+Wetted_width+log_LWD+SUB1+Julian_date+Slope_percent
-      +GEdda+Lake+Type_migration_continuous*Av_depth,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
-  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
-sem.fit(M2,AV_Migration_NAremoved2, corr.errors = c("Distance_to_sea~~log_OringTOT","Year~~log_OringTOT"))
-sem.coefs(M2,AV_Migration_NAremoved2)
-sem.model.fits(M2)
-
-M2 = list(
-  lme(log_OringTOT~Average_air_temperature+Av_depth+log_LWD+SUB1+Julian_date+Slope_percent
-      +GEdda+Lake+Type_migration_continuous*Wetted_width,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2),
-  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Julian_date+Slope_percent,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_Migration_NAremoved2))
-sem.fit(M2,AV_Migration_NAremoved2, corr.errors = c("Distance_to_sea~~log_OringTOT","Year~~log_OringTOT"))
-sem.coefs(M2,AV_Migration_NAremoved2)
-sem.plot(M2, AV_Migration_NAremoved2)
-sem.model.fits(M2)
-
-plot(AV_Migration_NAremoved2$Wetted_width,AV_Migration_NAremoved2$Type_migration_continuous)
-plot(AV_Migration_NAremoved2$Av_depth,AV_Migration_NAremoved2$Type_migration_continuous)
-cor.test(AV_Migration_NAremoved2$Wetted_width,AV_Migration_NAremoved2$Type_migration_continuous, method="spearman")
-cor.test(AV_Migration_NAremoved2$Av_depth,AV_Migration_NAremoved2$Type_migration_continuous, method="spearman")
-
-#### using a model from Migrants and one for Residents (coming from different subsets before averaging):
-# for migrant: Julian date is not sigfnif for both öring and LWD. Explained variance 0.10
-M2 = list(
-  lme(log_OringTOT~Average_air_temperature+Wetted_width+Av_depth+log_LWD+SUB1+Slope_percent
-      +GEdda+Lake,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_migrants2),
-  lme(log_LWD~Average_air_temperature+Distance_to_sea+Av_depth+Wetted_width+Year+Slope_percent,
-      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_migrants2))
-sem.fit(M2,AV_migrants2)
-sem.coefs(M2,AV_migrants2)
-sem.model.fits(M2)
-sem.plot(M2, AV_migrants2)
 
 
 # using fish spp as exogenous and binary ----------------------------------
