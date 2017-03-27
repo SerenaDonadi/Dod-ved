@@ -1189,10 +1189,10 @@ sem.plot(M2, AV2)
 sem.coefs(M2,AV2,standardize = "scale") 
 sem.coefs(M2,AV2,standardize = "range")
 
+
 #No interaction temp*Gedda
 #Gedda not signif, and Lake shows instead a positive link which I therefore ignore - bottom up?
-
-
+# No effect of trout on Cottus
 
 # other options to deal with type of migration -----------------------------
 
