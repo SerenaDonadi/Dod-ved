@@ -145,7 +145,7 @@ names(AV_Migration_NAremoved)<-c("River_name", "Catchment_number","Year",
              "Velocity","Slope_percent","Distance_to_sea","Month","Julian_date","Type_migration_continuous","Abbor","BEcrOTOT","Elrit","GEdda",
              "HarrTOT","Lake","LaxFIXTO","LaxOrtot","LaxTOT","Eel","MOrt","OringTOT","RegnbTOT","ROdinTOT","Cottus_spp",
              "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species","Forest_coverage","Forest_volume","Forest_age")
-
+summary(AV)
 
 # Subset for only migrating or resident -----------------------------------
 # or # specific subsets:
