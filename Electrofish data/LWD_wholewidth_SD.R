@@ -1,7 +1,7 @@
 rm(list=ls())
 setwd("C:/Users/sedi0002/Google Drive/Solab/Dod ved/Electrofish data")
 setwd("C:/Users/serena/Google Drive/Solab/Dod ved/Electrofish data")
-my<-read.table("LWD_wholewidth_SD7.txt",header=T)
+my<-read.table("LWD_wholewidth_SD8.txt",header=T)
 
 head(my)
 str(my)
@@ -89,7 +89,7 @@ ggplot(AV3, aes(x = Catchment_number, y = Forest_coverage)) +
 ggplot(my1, aes(x = Year, y = OringTOT)) +
   geom_point(aes(colour = River_name), size = 2)
 
-# Extracting averages per river and year without removing NAs -----------------------------------
+# Extracting averages per river and year without removing NAs (used for salmon and cottus) -----------------------------------
 ### extract means per river and year: you can not do it for factors (nor binary variables)
 # I think: include only factors in the list(groups), while calculate later binary variables or  
 # inlcude also those binary variables and keep them as numeric, and convert them later all no-zero numbers into ones 
@@ -125,7 +125,7 @@ summary(AV)
 
 
 
-# Extracting averages per river and year after removing NAs (for type of migration) - better --------
+# Extracting averages per river and year after removing NAs (for type of migration) - for trout --------
 
 # not to lose too much info, I delete NA at the level of site, so that I can still get an average per river
 # (if not all sites have NAs for that river):
@@ -147,29 +147,62 @@ names(AV_Migration_NAremoved)<-c("River_name", "Catchment_number","Year",
              "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species","Forest_coverage","Forest_volume","Forest_age")
 summary(AV)
 
-# Subset for only migrating or resident -----------------------------------
-# or # specific subsets:
-my_Migration_0<-my_Migration_NAremoved[my_Migration_NAremoved$Typ_of_migration_numerical=="0",]
-my_Migration_1<-my_Migration_NAremoved[my_Migration_NAremoved$Typ_of_migration_numerical=="1",]
-# if I consider subset with only migrating (or only resident):
-AV_migrants<-aggregate(cbind(my_Migration_0$Altitude,my_Migration_0$ddlat,my_Migration_0$ddlong,my_Migration_0$LWD,my_Migration_0$exaktarea,my_Migration_0$Wetted_width,my_Migration_0$Site_length
-                                        ,my_Migration_0$Site_area,my_Migration_0$Maxdepth,my_Migration_0$Av_depth,my_Migration_0$Water_temperature,my_Migration_0$Average_air_temperature
-                                        ,my_Migration_0$SUB1,my_Migration_0$Site_habitat_index,my_Migration_0$Velocity,my_Migration_0$Slope_percent,my_Migration_0$Distance_to_sea,my_Migration_0$Month,my_Migration_0$Julian_date,my_Migration_0$Typ_of_migration_numerical
-                                        ,my_Migration_0$Abbor,my_Migration_0$BEcrOTOT,my_Migration_0$Elrit,my_Migration_0$GEdda,my_Migration_0$HarrTOT,my_Migration_0$Lake,my_Migration_0$LaxFIXTO,my_Migration_0$LaxOrtot,my_Migration_0$LaxTOT,my_Migration_0$Eel,my_Migration_0$MOrt,my_Migration_0$OringTOT
-                                        ,my_Migration_0$RegnbTOT,my_Migration_0$ROdinTOT,my_Migration_0$Cottus_spp,my_Migration_0$Lampetra,my_Migration_0$Sticklebacks,my_Migration_0$VIX,my_Migration_0$VIX_klass,my_Migration_0$Number_of_fish_species
-),list(my_Migration_0$River_name,my_Migration_0$Catchment_number,my_Migration_0$Year),mean)
-names(AV_migrants)<-c("River_name", "Catchment_number","Year", 
+
+#Extracting averages per river and year after selecting only migrating  --------
+# for salmon, to avoid problem of dams
+my_Migrants<-my[my$Typ_of_migration_numerical=="1",]
+AV_my_Migrants<-aggregate(cbind(my_Migrants$Altitude,my_Migrants$ddlat,my_Migrants$ddlong,my_Migrants$LWD,my_Migrants$exaktarea,my_Migrants$Wetted_width,my_Migrants$Site_length
+                                        ,my_Migrants$Site_area,my_Migrants$Maxdepth,my_Migrants$Av_depth,my_Migrants$Water_temperature,my_Migrants$Average_air_temperature
+                                        ,my_Migrants$SUB1,my_Migrants$Site_habitat_index,my_Migrants$Velocity,my_Migrants$Slope_percent,my_Migrants$Distance_to_sea,my_Migrants$Month,my_Migrants$Julian_date,my_Migrants$Typ_of_migration_numerical
+                                        ,my_Migrants$Abbor,my_Migrants$BEcrOTOT,my_Migrants$Elrit,my_Migrants$GEdda,my_Migrants$HarrTOT,my_Migrants$Lake,my_Migrants$LaxFIXTO,my_Migrants$LaxOrtot,my_Migrants$LaxTOT,my_Migrants$Eel,my_Migrants$MOrt,my_Migrants$OringTOT
+                                        ,my_Migrants$RegnbTOT,my_Migrants$ROdinTOT,my_Migrants$Cottus_spp,my_Migrants$Lampetra,my_Migrants$Sticklebacks,my_Migrants$VIX,my_Migrants$VIX_klass,my_Migrants$Number_of_fish_species,
+                                my_Migrants$AreaForest, my_Migrants$TotVol, my_Migrants$MeanAge),list(my_Migrants$River_name,my_Migrants$Catchment_number,my_Migrants$Year),mean)
+names(AV_my_Migrants)<-c("River_name", "Catchment_number","Year", 
                                  "Altitude","Lat","Long","LWD","exaktarea","Wetted_width","Site_length","Site_area",
                                  "Maxdepth","Av_depth","Water_temperature","Average_air_temperature","SUB1","Site_habitat_index",
                                  "Velocity","Slope_percent","Distance_to_sea","Month","Julian_date","Type_migration_continuous","Abbor","BEcrOTOT","Elrit","GEdda",
                                  "HarrTOT","Lake","LaxFIXTO","LaxOrtot","LaxTOT","Eel","MOrt","OringTOT","RegnbTOT","ROdinTOT","Cottus_spp",
-                                 "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species")
+                                 "Lampetra","Sticklebacks","VIX","VIX_klass","Number_of_fish_species","Forest_coverage","Forest_volume","Forest_age")
+summary(AV_my_Migrants)
+
 # add log trasformed var:
-AV_migrants$log_OringTOT <- log(AV_migrants$OringTOT+1)
-AV_migrants$log_LWD <- log(AV_migrants$LWD+1)
+AV_my_Migrants$log_OringTOT <- log(AV_my_Migrants$OringTOT+1)
+AV_my_Migrants$log_LWD <- log(AV_my_Migrants$LWD+1)
+AV_my_Migrants$log_GEdda<- log(AV_my_Migrants$GEdda+1)
+AV_my_Migrants$log_Lake<- log(AV_my_Migrants$Lake+1)
+AV_my_Migrants$log_Cottus_spp<- log(AV_my_Migrants$Cottus_spp+1)
+AV_my_Migrants$log_BEcrOTOT<- log(AV_my_Migrants$BEcrOTOT+1)
+AV_my_Migrants$log_HarrTOT<- log(AV_my_Migrants$HarrTOT+1)
+AV_my_Migrants$log_LaxTOT<- log(AV_my_Migrants$LaxTOT+1)
 
 # remove NAs from full dataset
-AV_migrants2<-na.omit(AV_migrants)
+AV_my_Migrants2<-na.omit(AV_my_Migrants)
+
+### narrow selction fo variables to avoid to loose too many data at the last step (na.omit):
+my_Migrants<-my[my$Typ_of_migration_numerical=="1",]
+AV_narrow<-aggregate(cbind(my_Migrants$Altitude,my_Migrants$LWD,my_Migrants$Wetted_width
+                                ,my_Migrants$Av_depth,my_Migrants$Average_air_temperature
+                                ,my_Migrants$Velocity,my_Migrants$Slope_percent,my_Migrants$Julian_date
+                                ,my_Migrants$LaxTOT,my_Migrants$OringTOT
+                                ,my_Migrants$Cottus_spp,
+                                my_Migrants$AreaForest, my_Migrants$MeanAge),list(my_Migrants$River_name,my_Migrants$Catchment_number,my_Migrants$Year),mean)
+names(AV_narrow)<-c("River_name", "Catchment_number","Year", 
+                         "Altitude","LWD","Wetted_width",
+                         "Av_depth","Average_air_temperature",
+                         "Velocity","Slope_percent","Julian_date","LaxTOT","OringTOT","Cottus_spp",
+                         "Forest_coverage","Forest_age")
+summary(AV_narrow)
+
+# add log trasformed var:
+AV_narrow$log_OringTOT <- log(AV_narrow$OringTOT+1)
+AV_narrow$log_LWD <- log(AV_narrow$LWD+1)
+AV_narrow$log_Cottus_spp<- log(AV_narrow$Cottus_spp+1)
+AV_narrow$log_LaxTOT<- log(AV_narrow$LaxTOT+1)
+
+# remove NAs from full dataset
+AV_narrow2<-na.omit(AV_narrow)
+
+
 
 # Add binary and transformed variables to the right dataset -----------------------
 ######### add to the dataset binary variables of presence/absence for fish (as numerical variables):
@@ -1076,7 +1109,7 @@ M2 = list(
 sem.coefs(M2,AV2,standardize = "range")
 # explained variation: 6 and 13%
 
-# if I include forest age and volume: same as eabove, I need two correlated errors, and explained variance is lower: 6 and 12
+# if I include forest age and volume: same as above, I need two correlated errors, and explained variance is lower: 6 and 12
 # including forest data with dist to sea instead of altitude:air temp is signif on lax but  explained variation: 5 and 14%
 
 # BEST without forest data:
@@ -1175,6 +1208,43 @@ sem.fit(M2,AV_Migration_NAremoved2,corr.errors = c("OringTOT_KLASS~~log_LWD"))
 sem.coefs(M2,AV_Migration_NAremoved2)
 sem.model.fits(M2)
 sem.plot(M2, AV_Migration_NAremoved2)
+
+
+# SALMON on subset with only migratings (trout) ---------------------------
+# to avoid zeros casued by presence of dam
+
+# I take the best model for salmon so far and see where I end up:
+# try model on:
+# 1) AV_my_Migrants:doesn't work, too many NAs
+#2) AV_my_Migrants2: where I excluded NAs with na.omit: results are the same as the salmon model on all data but the
+# Fisher p value too low.
+#3) I went back to AV_my_Migrants and selected only the variables that will be significant, so when I excluded NAs
+# I retained as many usable data as possible. Indeed I have 6122 observation instead of 3467 as above (#2):
+M2 = list(
+  lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date+Altitude+Year+Velocity,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_narrow2),
+  lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Velocity+Altitude+Forest_age+Forest_coverage,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_narrow2))
+sem.fit(M2,AV_narrow2)
+sem.fit(M2,AV_narrow2,corr.errors = c("log_LaxTOT~~Forest_age","Forest_coverage~~log_LaxTOT"))
+sem.coefs(M2,AV_narrow2)
+sem.model.fits(M2)
+# I remove velocity on LWD: FINAL
+M2 = list(
+  lme(log_LaxTOT~Av_depth+Wetted_width+Julian_date+Altitude+Velocity,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_narrow2),
+  lme(log_LWD~Average_air_temperature+Av_depth+Wetted_width+Year+Slope_percent+Altitude+Forest_age+Forest_coverage,
+      random=~1|River_name/Catchment_number, corAR1(form=~Year),data=AV_narrow2))
+sem.fit(M2,AV_narrow2)
+sem.fit(M2,AV_narrow2,corr.errors = c("log_LaxTOT~~Forest_age","Forest_coverage~~log_LaxTOT"))
+sem.coefs(M2,AV_narrow2)
+sem.model.fits(M2) # explained variation: 5 and 13%
+# ce l'ho fatta!!! the only difference with the salmon model on all data is that velocity does not affect LWD
+sem.coefs(M2,AV_narrow2,standardize = "scale") 
+sem.coefs(M2,AV_narrow2,standardize = "range") 
+sem.plot(M2, AV_narrow2)
+# if I remove year on Lax, which is not signif if standardized on range, the model wants it back
+
 
 # COTTUS ------------------------------------------------------------------
 M2 = list(
